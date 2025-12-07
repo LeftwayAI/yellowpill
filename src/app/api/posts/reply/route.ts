@@ -85,27 +85,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // Get user's manifest for context
+    // Get user's manifest and soul summaries for context
     const { data: manifestData } = await supabase
       .from("soul_manifests")
-      .select("manifest")
+      .select("manifest, soul_summaries")
       .eq("user_id", user.id)
       .single();
 
     const manifest = manifestData?.manifest || {};
+    const soulSummaries = manifestData?.soul_summaries as { summaries?: Record<string, string> } | null;
+    
+    // Pick a random soul summary for context, or create a basic one
+    let soulContext = "";
+    if (soulSummaries?.summaries) {
+      const summaryKeys = Object.keys(soulSummaries.summaries);
+      if (summaryKeys.length > 0) {
+        const randomKey = summaryKeys[Math.floor(Math.random() * summaryKeys.length)];
+        soulContext = soulSummaries.summaries[randomKey] || "";
+      }
+    }
 
     // Generate response in poster's voice
     const posterSystemPrompt = `${post.poster.system_prompt}
 
 You are responding to a reply from the user. Stay in character as "${post.poster.name}".
 Keep responses concise (1-3 sentences). Be warm and engaged.
-Reference what they said and respond thoughtfully.`;
+Reference what they said and respond thoughtfully.
 
-    const conversationContext = `Original post: "${post.content}"
+=== WHO THIS PERSON IS ===
+${soulContext || "No additional context available."}
+=== END CONTEXT ===
 
-User's reply: "${message}"
+Use this context to inform your tone and understanding of who you're talking to, but DON'T explicitly reference their profile details. Respond naturally like a friend who knows them well.`;
 
-Respond as ${post.poster.name}. Be genuine and connected.`;
+    const conversationContext = `Original post you wrote for them: "${post.content}"
+
+Their reply to you: "${message}"
+
+Respond as ${post.poster.name}. Be genuine, warm, and connected. Your response should feel like it comes from someone who truly knows and believes in them.`;
 
     const response = await grokChat(
       posterSystemPrompt,
