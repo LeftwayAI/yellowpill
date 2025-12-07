@@ -273,7 +273,6 @@ export default function FeedPage() {
                 onFeedback={handleFeedback}
                 onSeen={markAsSeen}
                 onReply={handleReply}
-                delay={index * 0.05}
                 formatTimeAgo={formatTimeAgo}
               />
             ))}
@@ -289,7 +288,6 @@ interface PostCardProps {
   onFeedback: (id: string, feedback: "up" | "down") => void;
   onSeen: (id: string) => void;
   onReply: (postId: string, message: string) => Promise<string | null>;
-  delay: number;
   formatTimeAgo: (date: string) => string;
 }
 
@@ -319,7 +317,120 @@ function generateOrbPositions(postId: string) {
   return orbs;
 }
 
-function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: PostCardProps) {
+// Oracle Orb Avatar - each has unique random movement
+interface OracleOrbProps {
+  posterId: string;
+  accentColor: string;
+  onClick: (e: React.MouseEvent) => void;
+}
+
+function OracleOrb({ posterId, accentColor, onClick }: OracleOrbProps) {
+  // Generate unique animation values based on posterId
+  const seed = posterId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const duration1 = 8 + (seed % 7); // 8-15s
+  const duration2 = 10 + ((seed * 3) % 8); // 10-18s
+  const duration3 = 12 + ((seed * 7) % 6); // 12-18s
+  const delay1 = (seed % 5) * 0.5; // 0-2.5s
+  const delay2 = ((seed * 2) % 5) * 0.5;
+  const delay3 = ((seed * 3) % 5) * 0.5;
+  
+  // Random starting positions for the inner glow orbs
+  const pos1 = { x: 20 + (seed % 30), y: 20 + ((seed * 2) % 30) };
+  const pos2 = { x: 50 + ((seed * 3) % 30), y: 60 + ((seed * 4) % 25) };
+  const pos3 = { x: 70 + ((seed * 5) % 20), y: 30 + ((seed * 6) % 30) };
+
+  return (
+    <button
+      onClick={onClick}
+      className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0"
+      style={{ 
+        // Solid color base - the "surface" of the orb
+        background: accentColor,
+      }}
+    >
+      {/* Inner glow orbs - swirling underneath the surface */}
+      <div 
+        className="absolute rounded-full blur-[3px]"
+        style={{
+          width: '150%',
+          height: '150%',
+          left: `${pos1.x - 40}%`,
+          top: `${pos1.y - 40}%`,
+          background: `radial-gradient(circle, white 0%, ${accentColor} 30%, transparent 60%)`,
+          animation: `orb-swirl-1-${posterId} ${duration1}s ease-in-out infinite`,
+          animationDelay: `${delay1}s`,
+          opacity: 0.6,
+        }}
+      />
+      <div 
+        className="absolute rounded-full blur-[4px]"
+        style={{
+          width: '120%',
+          height: '120%',
+          left: `${pos2.x - 40}%`,
+          top: `${pos2.y - 40}%`,
+          background: `radial-gradient(circle, ${accentColor}ff 0%, ${accentColor}88 40%, transparent 70%)`,
+          animation: `orb-swirl-2-${posterId} ${duration2}s ease-in-out infinite`,
+          animationDelay: `${delay2}s`,
+          opacity: 0.7,
+        }}
+      />
+      <div 
+        className="absolute rounded-full blur-[2px]"
+        style={{
+          width: '100%',
+          height: '100%',
+          left: `${pos3.x - 50}%`,
+          top: `${pos3.y - 50}%`,
+          background: `radial-gradient(circle, rgba(0,0,0,0.4) 0%, transparent 50%)`,
+          animation: `orb-swirl-3-${posterId} ${duration3}s ease-in-out infinite`,
+          animationDelay: `${delay3}s`,
+          opacity: 0.5,
+        }}
+      />
+      
+      {/* Glass surface reflection - sharp circular edge */}
+      <div 
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: `
+            radial-gradient(ellipse 80% 50% at 30% 20%, rgba(255,255,255,0.4) 0%, transparent 50%),
+            radial-gradient(ellipse 60% 40% at 70% 80%, rgba(0,0,0,0.3) 0%, transparent 40%)
+          `,
+        }}
+      />
+      
+      {/* Sharp circular border for definition */}
+      <div 
+        className="absolute inset-0 rounded-full"
+        style={{
+          boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.15), inset 0 2px 4px rgba(255,255,255,0.1), inset 0 -2px 4px rgba(0,0,0,0.2)`,
+        }}
+      />
+
+      {/* Unique keyframes for this orb */}
+      <style>{`
+        @keyframes orb-swirl-1-${posterId} {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          25% { transform: translate(${10 + (seed % 15)}%, ${-10 - (seed % 10)}%) scale(1.1); }
+          50% { transform: translate(${-5 - (seed % 10)}%, ${5 + (seed % 15)}%) scale(0.95); }
+          75% { transform: translate(${8 + (seed % 12)}%, ${8 + (seed % 8)}%) scale(1.05); }
+        }
+        @keyframes orb-swirl-2-${posterId} {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(${-12 - ((seed * 2) % 10)}%, ${6 + ((seed * 2) % 12)}%) scale(1.08); }
+          66% { transform: translate(${8 + ((seed * 2) % 8)}%, ${-8 - ((seed * 2) % 10)}%) scale(0.92); }
+        }
+        @keyframes orb-swirl-3-${posterId} {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(${15 + ((seed * 3) % 10)}%, ${-10 - ((seed * 3) % 15)}%); }
+        }
+      `}</style>
+    </button>
+  );
+}
+
+function PostCard({ post, onFeedback, onSeen, onReply, formatTimeAgo }: PostCardProps) {
   const router = useRouter();
   const [hasSeen, setHasSeen] = useState(post.seen);
   const [showReply, setShowReply] = useState(false);
@@ -405,8 +516,7 @@ function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: P
   return (
     <div
       ref={cardRef}
-      className="relative animate-slide-up cursor-pointer overflow-hidden group border-b border-[#222]"
-      style={{ animationDelay: `${delay}s` }}
+      className="relative cursor-pointer overflow-hidden group border-b border-[#222]"
       onClick={handleCardClick}
     >
       {/* Large floating orbs - clipped by overflow-hidden on parent */}
@@ -448,37 +558,12 @@ function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: P
       
       {/* Content - X-style gutter layout */}
       <div className="relative z-10 flex gap-3 px-4 py-3">
-        {/* Gutter - Orb-like avatar with northern lights effect contained within circle */}
-        <button
+        {/* Gutter - Oracle orb avatar */}
+        <OracleOrb 
+          posterId={post.poster_id}
+          accentColor={accentColor}
           onClick={handlePosterClick}
-          className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 group/avatar"
-        >
-          {/* Base dark background */}
-          <div className="absolute inset-0 rounded-full bg-black/80" />
-          {/* Northern lights aurora - contained within circle */}
-          <div 
-            className="absolute inset-0 rounded-full animate-aurora-drift"
-            style={{ 
-              background: `
-                radial-gradient(ellipse 120% 80% at 20% 20%, ${accentColor}80, transparent 50%),
-                radial-gradient(ellipse 100% 100% at 80% 80%, ${accentColor}60, transparent 45%),
-                radial-gradient(ellipse 80% 120% at 50% 50%, ${accentColor}40, transparent 60%)
-              `,
-            }}
-          />
-          {/* Second aurora layer with offset animation */}
-          <div 
-            className="absolute inset-0 rounded-full animate-aurora-drift-2"
-            style={{ 
-              background: `
-                radial-gradient(ellipse 90% 120% at 70% 30%, ${accentColor}50, transparent 50%),
-                radial-gradient(ellipse 110% 90% at 30% 70%, ${accentColor}40, transparent 45%)
-              `,
-            }}
-          />
-          {/* Glass highlight */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 via-transparent to-transparent" />
-        </button>
+        />
         
         {/* Main content area - aligned with poster name */}
         <div className="flex-1 min-w-0">

@@ -661,27 +661,22 @@ When you find something good, include:
   console.log("[Scout] Citations:", searchResult.citations);
   console.log("[Scout] Sources used:", searchResult.sourcesUsed);
 
-  // Step 3: Format the final post
-  const formatPrompt = `Based on this search result:
-
+  // Step 3: Format the final post - keep it SHORT
+  const formatPrompt = `Search result:
 ${searchResult.content}
 
-Citations available: ${searchResult.citations.join(", ") || "none"}
+Citations: ${searchResult.citations.join(", ") || "none"}
 
-Write a "${postType.type}" post for "${poster.name}" (${poster.tagline}).
+Write a BRIEF Scout post. Rules:
+- MAX 2 sentences before the link
+- Lead with the discovery itself, not context about them
+- Include ONE link on its own line at the end
+- No "I found..." or "As someone who..." — just the thing
+- Under ${postType.max_length} characters total
 
-Style guide:
-${poster.style_guide}
+Example tone: "This just dropped: [discovery]. [One line of why it's interesting].\n\n[link]"
 
-CRITICAL RULES:
-- Under ${postType.max_length} characters
-- Start with the discovery, not "I found..."
-- Include ONE relevant link if you have a citation (on its own line)
-- Make it feel like a genuine discovery, not a news roundup
-- Connect it to something in their soul context without being heavy-handed
-- Be excited but not breathless
-
-Generate ONLY the post content.`;
+Generate ONLY the post.`;
 
   const content = await grokChat(
     poster.system_prompt,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isDevModeEnabled, TEST_POSTS, POSTER_COLORS } from "@/lib/dev-auth";
@@ -53,8 +53,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const router = useRouter();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
-  const [reply, setReply] = useState("");
+  const [replyText, setReplyText] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
+  const [replies, setReplies] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const loadPost = async () => {
@@ -119,10 +122,46 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   };
 
   const handleSubmitReply = async () => {
-    if (!reply.trim() || !post) return;
-    // TODO: Implement reply functionality
-    console.log("Reply submitted:", reply);
-    setReply("");
+    if (!replyText.trim() || !post || isReplying) return;
+    
+    setIsReplying(true);
+    const userMessage = replyText.trim();
+    setReplyText("");
+    
+    // Add user message to thread immediately
+    setReplies(prev => [...prev, { role: "user", content: userMessage }]);
+    
+    if (isDevModeEnabled()) {
+      // Simulate response in dev mode
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setReplies(prev => [...prev, { role: "assistant", content: "That's interesting! I'll keep that in mind." }]);
+      setIsReplying(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/posts/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId: post.id, message: userMessage }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setReplies(prev => [...prev, { role: "assistant", content: data.response }]);
+      }
+    } catch (err) {
+      console.error("Reply error:", err);
+    }
+    
+    setIsReplying(false);
+  };
+
+  const handleReplyKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmitReply();
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -317,41 +356,58 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                   />
                 </svg>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-[var(--foreground-muted)] hover:text-white hover:bg-white/5 transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                  />
-                </svg>
-                <span className="text-sm">Save</span>
-              </button>
             </div>
           </div>
         </div>
 
-        {/* Reply section - smaller */}
-        <div className="mt-6">
-          <h3 className="text-sm font-medium text-[var(--foreground-muted)] mb-2">Reply</h3>
-          <div className="border border-[#222] rounded-lg p-3 bg-black/40">
-            <textarea
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-              placeholder="What are you thinking?"
-              rows={2}
-              className="w-full bg-transparent border-0 p-0 resize-none text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:ring-0"
-            />
-            <div className="flex justify-end mt-2">
-              <button
-                onClick={handleSubmitReply}
-                disabled={!reply.trim()}
-                className="btn-primary px-4 py-1.5 text-sm disabled:opacity-40"
-              >
-                Reply
-              </button>
+        {/* Reply section - chat style */}
+        <div className="mt-6 pt-4">
+          {/* Existing replies */}
+          {replies.map((r, idx) => (
+            <div 
+              key={idx} 
+              className={`mb-3 ${r.role === "user" ? "pl-4 border-l-2 border-[#333]" : ""}`}
+            >
+              <span className="text-xs text-[var(--foreground-subtle)] mb-1 block">
+                {r.role === "user" ? "You" : post?.poster.name}
+              </span>
+              <p className="text-[var(--foreground)] text-sm leading-relaxed">
+                {r.content}
+              </p>
             </div>
+          ))}
+          
+          {/* Reply input */}
+          <div className="flex gap-2 items-end">
+            <textarea
+              ref={replyInputRef}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              onKeyDown={handleReplyKeyDown}
+              placeholder="Write your reply here..."
+              rows={1}
+              disabled={isReplying}
+              className="flex-1 resize-none text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none disabled:opacity-50"
+              style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                boxShadow: 'none',
+                padding: '8px 0',
+                borderRadius: 0,
+                borderBottom: '1px solid #333',
+              }}
+            />
+            <button
+              onClick={handleSubmitReply}
+              disabled={!replyText.trim() || isReplying}
+              className="px-3 py-1.5 rounded-full text-sm font-medium transition-all disabled:opacity-30"
+              style={{ 
+                background: replyText.trim() ? accentColor : '#333',
+                color: replyText.trim() ? '#000' : '#666',
+              }}
+            >
+              {isReplying ? "..." : "Send"}
+            </button>
           </div>
         </div>
         </div>

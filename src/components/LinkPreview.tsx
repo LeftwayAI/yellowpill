@@ -66,7 +66,7 @@ export function LinkPreview({ url, accentColor = "#FCC800" }: LinkPreviewProps) 
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block mt-3 rounded-xl border border-[#333] overflow-hidden bg-[#111] hover:border-[#444] transition-colors"
+      className="block mt-3 rounded-xl border border-[#333] overflow-hidden bg-[#111]"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Image */}
@@ -75,7 +75,7 @@ export function LinkPreview({ url, accentColor = "#FCC800" }: LinkPreviewProps) 
           <img
             src={data.image}
             alt=""
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover"
             onError={() => setImageError(true)}
           />
         </div>
@@ -110,7 +110,7 @@ export function LinkPreview({ url, accentColor = "#FCC800" }: LinkPreviewProps) 
             {data?.siteName || hostname}
           </span>
           {/* External link icon */}
-          <svg className="w-3 h-3 text-[var(--foreground-subtle)] ml-auto opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3 h-3 text-[var(--foreground-subtle)] ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
         </div>

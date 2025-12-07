@@ -27,13 +27,13 @@ export function Header({ showProfile = true, userName, userProfileImage }: Heade
     router.push("/");
   };
 
-  const displayName = isDevModeEnabled() 
-    ? TEST_USER.email.split("@")[0] 
+  const displayName = isDevModeEnabled()
+    ? TEST_USER.email.split("@")[0]
     : (userName || "User");
 
   return (
     <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-lg border-b border-[#222]">
-      <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="max-w-xl mx-auto pl-6 pr-4 py-3 flex items-center justify-between">
         {/* Left side - Pill logo + Yellow Pill text */}
         <button
           onClick={() => router.push("/feed")}
@@ -46,7 +46,7 @@ export function Header({ showProfile = true, userName, userProfileImage }: Heade
             height={28}
             className="drop-shadow-[0_0_10px_rgba(252,200,0,0.3)]"
           />
-          <span className="text-white font-normal text-lg" style={{ fontFamily: "'Satoshi', 'Satoshi-Variable', sans-serif" }}>
+          <span className="text-white font-medium italic text-lg" style={{ fontFamily: "'Satoshi', 'Satoshi-Variable', sans-serif" }}>
             Yellow Pill
           </span>
         </button>
@@ -93,7 +93,7 @@ export function Header({ showProfile = true, userName, userProfileImage }: Heade
                   className="fixed inset-0 z-40"
                   onClick={() => setMenuOpen(false)}
                 />
-                
+
                 {/* Menu */}
                 <div className="absolute right-0 top-full mt-2 w-48 bg-[#111] border border-[#222] rounded-xl shadow-xl z-50 overflow-hidden">
                   {/* User info */}
@@ -111,7 +111,7 @@ export function Header({ showProfile = true, userName, userProfileImage }: Heade
                     <button
                       onClick={() => {
                         setMenuOpen(false);
-                        router.push("/manifest");
+                        router.push("/profile");
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-[var(--foreground-muted)] hover:bg-[#1a1a1a] hover:text-white transition-colors"
                     >
