@@ -19,12 +19,12 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-    
+
     // Check if user is logged in
     const checkUser = async () => {
       const supabase = createClient();
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      
+
       if (authUser) {
         // Check if they have a manifest (completed intake)
         const { data: manifest } = await supabase
@@ -32,13 +32,13 @@ export default function Home() {
           .select("id")
           .eq("user_id", authUser.id)
           .single();
-        
+
         if (manifest) {
           // Has manifest, redirect to feed
           router.push("/feed");
           return;
         }
-        
+
         // Logged in but no manifest - show logout option
         setUser({
           avatarUrl: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || null,
@@ -46,7 +46,7 @@ export default function Home() {
         });
       }
     };
-    
+
     checkUser();
   }, [router]);
 
@@ -106,15 +106,14 @@ export default function Home() {
       )}
 
       <div
-        className={`max-w-md w-full flex flex-col items-center text-center ${
-          mounted ? "animate-fade-in" : "opacity-0"
-        }`}
+        className={`max-w-md w-full flex flex-col items-center text-center ${mounted ? "animate-fade-in" : "opacity-0"
+          }`}
       >
         {/* Copy */}
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-medium text-white mb-4 tracking-tight">
-          {user ? "Welcome back." : "Are you ready?"}
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-medium text-white mb-2 tracking-tight">
+          {user ? "Welcome back." : "Be your best self."}
         </h1>
-        <p className="text-[var(--foreground-muted)] text-lg mb-12">
+        <p className="text-[var(--foreground-muted)] text-xl md:text-3xl mb-12">
           {user ? "Let's finish getting to know you." : "It's time to take the yellow pill."}
         </p>
 
