@@ -6,6 +6,8 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { isDevModeEnabled } from "@/lib/dev-auth";
 import { ListBuilder } from "@/components/ListBuilder";
+// Voice input available but hidden for now
+// import { MicButton, VoiceInputDivider } from "@/components/MicButton";
 
 // ============================================
 // Types
@@ -84,12 +86,38 @@ const STATIC_QUESTIONS: IntakeQuestion[] = [
     manifestPath: "identity.name",
   },
   {
+    id: "birthday",
+    question: "When's your birthday?",
+    subtitle: "So I can remember.",
+    type: "text",
+    placeholder: "March 15, 1990",
+    manifestPath: "temporal.birthday",
+  },
+  {
     id: "passions",
     question: "What are you passionate about?",
     subtitle: "The things that light you up, that you could talk about for hours.",
     type: "text",
     placeholder: "Making things, writing, music, helping people...",
     manifestPath: "identity.passions",
+    multiline: true,
+  },
+  {
+    id: "superpowers",
+    question: "What are you really good at?",
+    subtitle: "Your unfair advantages. What do people come to you for?",
+    type: "text",
+    placeholder: "Writing, reading people, creative problem-solving...",
+    manifestPath: "identity.superpowers",
+    multiline: true,
+  },
+  {
+    id: "interests",
+    question: "What are you obsessed with?",
+    subtitle: "Topics you can't stop reading about. Rabbit holes you fall into. People who fascinate you.",
+    type: "text",
+    placeholder: "Technology, history, space travel, mundane inventions that changed the world...",
+    manifestPath: "interests.topics",
     multiline: true,
   },
   {
@@ -102,12 +130,48 @@ const STATIC_QUESTIONS: IntakeQuestion[] = [
     multiline: true,
   },
   {
+    id: "challenges",
+    question: "What's holding you back?",
+    subtitle: "The stuff you struggle with. Be honest.",
+    type: "text",
+    placeholder: "Self-discipline, believing in myself, staying focused...",
+    manifestPath: "growth.current_challenges",
+    multiline: true,
+  },
+  {
     id: "fears",
     question: "What are you afraid of?",
     subtitle: "The deep ones. What keeps you up at night?",
     type: "text",
     placeholder: "Being unremarkable, running out of time, regret...",
     manifestPath: "growth.fears",
+    multiline: true,
+  },
+  {
+    id: "values",
+    question: "What values are non-negotiable for you?",
+    subtitle: "The principles you live by. What you stand for.",
+    type: "text",
+    placeholder: "Honesty, curiosity, courage, standing up for what's right...",
+    manifestPath: "identity.values",
+    multiline: true,
+  },
+  {
+    id: "purpose",
+    question: "Do you know your purpose?",
+    subtitle: "The thing you were born to do. It's okay if you don't know yet.",
+    type: "text",
+    placeholder: "To build the world's largest..., to be the world's best...",
+    manifestPath: "identity.purpose",
+    multiline: true,
+  },
+  {
+    id: "life_story",
+    question: "Give me the quick version of your story.",
+    subtitle: "Where you started, where you've been, how you got here. The highlights and lowlights.",
+    type: "text",
+    placeholder: "Born in Toronto, moved around a lot, found my thing in...",
+    manifestPath: "life_context.life_story_summary",
     multiline: true,
   },
   {

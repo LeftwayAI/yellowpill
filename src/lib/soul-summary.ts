@@ -1,5 +1,6 @@
 // Soul Summary Generation
-// Creates multiple narrative summaries of a user from different angles
+// Creates rich narrative summaries that incorporate META observations
+// v1.1: Now uses raw inputs, voice profile, and meta observations
 
 import { grokChat, GROK_MODELS } from "./grok";
 import type { SoulManifest } from "@/types/manifest";
@@ -35,23 +36,144 @@ export interface SoulSummaries {
   summaries: Record<SoulAngle, string>;
 }
 
-// Convert manifest to a flat text representation for the prompt
+// Convert manifest to a RICH text representation for the prompt
+// Now includes raw inputs, META observations, and voice profile
 function manifestToText(manifest: SoulManifest): string {
   const sections: string[] = [];
+
+  // ===========================================
+  // RAW INPUTS (Their actual words - most important!)
+  // ===========================================
+  if (manifest.raw_inputs) {
+    const rawSections: string[] = [];
+    if (manifest.raw_inputs.passions_raw) {
+      rawSections.push(`[PASSIONS - their words]: "${manifest.raw_inputs.passions_raw}"`);
+    }
+    if (manifest.raw_inputs.future_raw) {
+      rawSections.push(`[FUTURE VISION - their words]: "${manifest.raw_inputs.future_raw}"`);
+    }
+    if (manifest.raw_inputs.fears_raw) {
+      rawSections.push(`[FEARS - their words]: "${manifest.raw_inputs.fears_raw}"`);
+    }
+    if (manifest.raw_inputs.challenges_raw) {
+      rawSections.push(`[CHALLENGES - their words]: "${manifest.raw_inputs.challenges_raw}"`);
+    }
+    if (manifest.raw_inputs.interests_raw) {
+      rawSections.push(`[INTERESTS - their words]: "${manifest.raw_inputs.interests_raw}"`);
+    }
+    if (rawSections.length > 0) {
+      sections.push("=== RAW INPUTS (verbatim) ===\n" + rawSections.join("\n\n"));
+    }
+  }
+
+  // ===========================================
+  // META OBSERVATIONS (AI analysis)
+  // ===========================================
+  if (manifest.meta) {
+    const metaSections: string[] = [];
+    
+    // Voice signature
+    if (manifest.meta.voice_signature) {
+      const v = manifest.meta.voice_signature;
+      metaSections.push(`Voice: ${v.tone}. ${v.sentence_style}. ${v.vocabulary_level}.`);
+      if (v.notable_patterns?.length) {
+        metaSections.push(`Writing patterns: ${v.notable_patterns.join("; ")}`);
+      }
+    }
+
+    // Key tensions (this is gold for content)
+    if (manifest.meta.tensions?.length) {
+      const tensionText = manifest.meta.tensions.map(t => 
+        `• ${t.tension} (${t.poles[0]} vs ${t.poles[1]})`
+      ).join("\n");
+      metaSections.push(`KEY TENSIONS:\n${tensionText}`);
+    }
+
+    // Motivational drivers
+    if (manifest.meta.motivational_drivers?.length) {
+      const primary = manifest.meta.motivational_drivers.filter(d => d.strength === "primary").map(d => d.driver);
+      const secondary = manifest.meta.motivational_drivers.filter(d => d.strength === "secondary").map(d => d.driver);
+      metaSections.push(`Driven by: ${primary.join(", ")}${secondary.length ? ` (also: ${secondary.join(", ")})` : ""}`);
+    }
+
+    // Weighted themes
+    if (manifest.meta.weighted_themes?.length) {
+      const highWeight = manifest.meta.weighted_themes.filter(t => t.weight === "high").map(t => t.theme);
+      if (highWeight.length) {
+        metaSections.push(`High emotional weight: ${highWeight.join(", ")}`);
+      }
+    }
+
+    // Standout elements
+    if (manifest.meta.standout_elements?.length) {
+      const standouts = manifest.meta.standout_elements.map(s => 
+        `• "${s.source_quote}" → ${s.observation}`
+      ).join("\n");
+      metaSections.push(`STANDOUT OBSERVATIONS:\n${standouts}`);
+    }
+
+    // Life phase
+    if (manifest.meta.life_phase_analysis) {
+      const lp = manifest.meta.life_phase_analysis;
+      metaSections.push(`Life phase: ${lp.current_phase}${lp.time_pressure_felt ? " (feeling time pressure)" : ""}`);
+      if (lp.key_decisions_pending?.length) {
+        metaSections.push(`Pending decisions: ${lp.key_decisions_pending.join(", ")}`);
+      }
+    }
+
+    if (metaSections.length > 0) {
+      sections.push("=== META OBSERVATIONS ===\n" + metaSections.join("\n"));
+    }
+  }
+
+  // ===========================================
+  // VOICE PROFILE (how to write for them)
+  // ===========================================
+  if (manifest.voice_profile) {
+    const vp = manifest.voice_profile;
+    const voiceSections: string[] = [];
+    voiceSections.push(`Communication style: ${vp.preferred_directness}, ${vp.challenge_tolerance} challenge tolerance`);
+    if (vp.responds_to?.length) {
+      voiceSections.push(`Responds to: ${vp.responds_to.join(", ")}`);
+    }
+    if (vp.turned_off_by?.length) {
+      voiceSections.push(`AVOID: ${vp.turned_off_by.join(", ")}`);
+    }
+    if (vp.style_notes) {
+      voiceSections.push(`Style notes: ${vp.style_notes}`);
+    }
+    sections.push("=== VOICE PROFILE ===\n" + voiceSections.join("\n"));
+  }
+
+  // ===========================================
+  // STRUCTURED DATA (parsed items)
+  // ===========================================
+  const structuredSections: string[] = [];
 
   // Identity
   if (manifest.identity) {
     if (manifest.identity.name) {
-      sections.push(`Name: ${manifest.identity.name}`);
+      structuredSections.push(`Name: ${manifest.identity.name}`);
     }
     if (manifest.identity.passions?.length) {
-      sections.push(`Passions: ${manifest.identity.passions.map(p => p.value).join(", ")}`);
+      structuredSections.push(`Passions: ${manifest.identity.passions.map(p => p.value).join(", ")}`);
     }
     if (manifest.identity.values?.length) {
-      sections.push(`Values: ${manifest.identity.values.map(v => v.value).join(", ")}`);
+      structuredSections.push(`Values: ${manifest.identity.values.map(v => v.value).join(", ")}`);
     }
     if (manifest.identity.superpowers?.length) {
-      sections.push(`Superpowers: ${manifest.identity.superpowers.map(s => s.value).join(", ")}`);
+      structuredSections.push(`Superpowers: ${manifest.identity.superpowers.map(s => s.value).join(", ")}`);
+    }
+  }
+
+  // Interests
+  if (manifest.interests?.topics?.length) {
+    const obsessed = manifest.interests.topics.filter(t => t.fascination_type === "obsessed_with").map(t => t.topic);
+    const curious = manifest.interests.topics.filter(t => t.fascination_type !== "obsessed_with").map(t => t.topic);
+    if (obsessed.length) structuredSections.push(`Obsessed with: ${obsessed.join(", ")}`);
+    if (curious.length) structuredSections.push(`Curious about: ${curious.join(", ")}`);
+    if (manifest.interests.people_who_fascinate?.length) {
+      structuredSections.push(`People who fascinate: ${manifest.interests.people_who_fascinate.join(", ")}`);
     }
   }
 
@@ -59,70 +181,43 @@ function manifestToText(manifest: SoulManifest): string {
   if (manifest.life_context) {
     if (manifest.life_context.current_location) {
       const loc = manifest.life_context.current_location;
-      sections.push(`Current location: ${loc.neighborhood ? loc.neighborhood + ", " : ""}${loc.city}, ${loc.country}`);
-    }
-    if (manifest.life_context.places_lived?.length) {
-      sections.push(`Places lived: ${manifest.life_context.places_lived.map(p => p.city).join(" → ")}`);
+      structuredSections.push(`Location: ${loc.neighborhood ? loc.neighborhood + ", " : ""}${loc.city}, ${loc.country}`);
     }
     if (manifest.life_context.eras?.length) {
       const erasText = manifest.life_context.eras.map(e => 
         `${e.name} (${e.time_period}, ${e.location}): ${e.description}`
       ).join("\n");
-      sections.push(`Life eras:\n${erasText}`);
-    }
-    if (manifest.life_context.life_story_summary?.value) {
-      sections.push(`Life story: ${manifest.life_context.life_story_summary.value}`);
+      structuredSections.push(`Life eras:\n${erasText}`);
     }
   }
 
   // Growth
   if (manifest.growth) {
     if (manifest.growth.current_challenges?.length) {
-      sections.push(`Current challenges: ${manifest.growth.current_challenges.map(c => c.value).join(", ")}`);
+      structuredSections.push(`Challenges: ${manifest.growth.current_challenges.map(c => c.value).join(", ")}`);
     }
     if (manifest.growth.fears?.length) {
-      sections.push(`Fears: ${manifest.growth.fears.map(f => f.value).join(", ")}`);
-    }
-    if (manifest.growth.goals_short_term?.length) {
-      sections.push(`Short-term goals: ${manifest.growth.goals_short_term.map(g => g.value).join(", ")}`);
-    }
-    if (manifest.growth.goals_long_term?.length) {
-      sections.push(`Long-term goals: ${manifest.growth.goals_long_term.map(g => g.value).join(", ")}`);
+      structuredSections.push(`Fears: ${manifest.growth.fears.map(f => f.value).join(", ")}`);
     }
   }
 
   // Dreams
   if (manifest.dreams) {
     if (manifest.dreams.vivid_future_scenes?.length) {
-      sections.push(`Future visions: ${manifest.dreams.vivid_future_scenes.map(d => d.value).join("; ")}`);
+      structuredSections.push(`Future visions: ${manifest.dreams.vivid_future_scenes.map(d => d.value).join("; ")}`);
     }
     if (manifest.dreams.fantasy_selves?.length) {
-      sections.push(`Fantasy selves: ${manifest.dreams.fantasy_selves.map(f => f.value).join(", ")}`);
-    }
-  }
-
-  // Worldview
-  if (manifest.worldview) {
-    if (manifest.worldview.core_beliefs?.length) {
-      sections.push(`Core beliefs: ${manifest.worldview.core_beliefs.map(b => b.value).join(", ")}`);
-    }
-    if (manifest.worldview.questions_wrestling_with?.length) {
-      sections.push(`Questions wrestling with: ${manifest.worldview.questions_wrestling_with.map(q => q.value).join(", ")}`);
+      structuredSections.push(`Fantasy selves: ${manifest.dreams.fantasy_selves.map(f => f.value).join(", ")}`);
     }
   }
 
   // Creative
-  if (manifest.creative) {
-    if (manifest.creative.creative_outlets?.length) {
-      sections.push(`Creative outlets: ${manifest.creative.creative_outlets.join(", ")}`);
-    }
+  if (manifest.creative?.creative_outlets?.length) {
+    structuredSections.push(`Creative outlets: ${manifest.creative.creative_outlets.join(", ")}`);
   }
 
-  // Relationships
-  if (manifest.relationships) {
-    if (manifest.relationships.important_people?.length) {
-      sections.push(`Important people: ${manifest.relationships.important_people.map(p => p.relation).join(", ")}`);
-    }
+  if (structuredSections.length > 0) {
+    sections.push("=== STRUCTURED DATA ===\n" + structuredSections.join("\n"));
   }
 
   return sections.join("\n\n");
@@ -151,8 +246,12 @@ STYLE RULES:
 - Write like case notes, not a magazine profile
 - If something is vague in the data, don't invent — skip it
 
+EXTRAPOLATION RULE:
+When describing their dreams/goals/future, don't just restate what they said — extrapolate what it MEANS at scale. If they want a smart home, that suggests a fascination with living in the future; if they want to write, that's a desire to shape minds. Include the IMPLICATIONS of what they want, not just the surface level. Think: "What does this look like if everything goes extraordinarily well for them?"
+
 BAD: "They're on a journey of self-discovery, navigating the tension between stability and adventure."
 GOOD: "34, Brooklyn. Writes code by day, poetry no one sees. Married 3 years, no kids, terrified that decision was wrong. Dreams of a cabin in Vermont but won't leave the city."
+GOOD (extrapolated): "Wants a smart home — really wants to live in the future before anyone else. Building toward a life where technology handles the friction so they can focus on what matters."
 
 Be RUTHLESSLY specific. If you don't have the data, don't pad.`;
 

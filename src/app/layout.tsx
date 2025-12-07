@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "AI that actually knows you",
   metadataBase: new URL("https://yellowpill.app"),
   icons: {
-    icon: "/images/assets/yellow_pill_logo.png",
+    icon: "/images/assets/yellow_pill_logo.svg",
     apple: "/images/assets/yellow_pill_logo.png",
   },
   openGraph: {

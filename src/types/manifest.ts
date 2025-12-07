@@ -1,7 +1,7 @@
 // Soul Manifest Types for Yellow Pill
-// Schema version: 1.0
+// Schema version: 1.1
 
-export const CURRENT_SCHEMA_VERSION = "1.0";
+export const CURRENT_SCHEMA_VERSION = "1.1";
 
 // ============================================
 // Atomic Units
@@ -59,6 +59,104 @@ export interface ImageItem {
 }
 
 // ============================================
+// META Observations - AI analysis of raw inputs
+// ============================================
+
+export interface MetaObservations {
+  // Voice and communication style
+  voice_signature: {
+    tone: string; // "direct, slightly impatient, optimistic-but-realistic"
+    sentence_style: string; // "short declarative sentences, uses 'And' to start sentences"
+    vocabulary_level: string; // "conversational but precise"
+    notable_patterns: string[]; // ["repeats 'really' for emphasis", "uses lists"]
+  };
+
+  // What stands out from their answers
+  standout_elements: {
+    observation: string;
+    why_significant: string;
+    source_quote: string;
+  }[];
+
+  // Contradictions and tensions worth exploring
+  tensions: {
+    tension: string; // "Can inspire others but struggles to believe in self"
+    poles: [string, string]; // ["external confidence", "internal doubt"]
+    source_evidence: string;
+  }[];
+
+  // Motivational DNA - what actually drives them
+  motivational_drivers: {
+    driver: string; // "autonomy", "recognition", "impact", "mastery", "security"
+    strength: "primary" | "secondary";
+    evidence: string;
+  }[];
+
+  // Emotional weight - things that carry more significance
+  weighted_themes: {
+    theme: string;
+    weight: "high" | "medium"; // how much this matters to them
+    reasoning: string;
+  }[];
+
+  // Phase of life and context
+  life_phase_analysis: {
+    current_phase: string; // "late 20s builder phase, pre-commitment to major life structures"
+    key_decisions_pending: string[];
+    time_pressure_felt: boolean;
+  };
+}
+
+// ============================================
+// Interest/Obsession Item
+// ============================================
+
+export interface InterestItem {
+  id: string;
+  topic: string; // "Space exploration"
+  fascination_type: "curious_about" | "obsessed_with" | "want_to_learn" | "love_reading_about";
+  subtopics?: string[]; // ["Mars colonization", "Starship development"]
+  people_who_inspire?: string[]; // ["Elon Musk's engineering approach", "Carl Sagan's communication"]
+  weight: number;
+  source: "onboarding" | "conversation" | "user_edit";
+  created_at: string;
+}
+
+// ============================================
+// Raw Inputs - preserved verbatim text
+// ============================================
+
+export interface RawInputs {
+  passions_raw?: string;
+  future_raw?: string;
+  superpowers_raw?: string;
+  challenges_raw?: string;
+  fears_raw?: string;
+  values_raw?: string;
+  life_story_raw?: string;
+  interests_raw?: string;
+  [key: string]: string | undefined; // Allow dynamic keys for future questions
+}
+
+// ============================================
+// Voice Profile - global tones for generation
+// ============================================
+
+export interface VoiceProfile {
+  // How to speak TO this person
+  preferred_directness: "very_direct" | "direct" | "gentle" | "very_gentle";
+  humor_tolerance: "high" | "medium" | "low";
+  challenge_tolerance: "loves_it" | "moderate" | "sensitive";
+  
+  // What resonates with them
+  responds_to: string[]; // ["specificity", "future-casting", "reframes"]
+  turned_off_by: string[]; // ["generic advice", "toxic positivity", "preachy tone"]
+  
+  // Writing style notes for generation
+  style_notes: string; // "Appreciates craft in language. Likes when things are clever but not try-hard."
+}
+
+// ============================================
 // Full Soul Manifest
 // ============================================
 
@@ -70,6 +168,15 @@ export interface SoulManifest {
   created_at: string;
   updated_at: string;
 
+  // === RAW INPUTS (v1.1) - Preserved verbatim ===
+  raw_inputs?: RawInputs;
+
+  // === META OBSERVATIONS (v1.1) - AI analysis ===
+  meta?: MetaObservations;
+
+  // === VOICE PROFILE (v1.1) - Global tones ===
+  voice_profile?: VoiceProfile;
+
   // === CORE IDENTITY (v1.0) ===
   identity: {
     name?: string;
@@ -77,6 +184,13 @@ export interface SoulManifest {
     purpose: ManifestItem[];
     superpowers: ManifestItem[];
     values: ManifestItem[];
+  };
+
+  // === INTERESTS & OBSESSIONS (v1.1) ===
+  interests?: {
+    topics: InterestItem[];
+    people_who_fascinate?: string[];
+    questions_curious_about?: string[];
   };
 
   // === LIFE CONTEXT (v1.0) ===
@@ -130,6 +244,7 @@ export interface SoulManifest {
 
   // === TEMPORAL (v1.1 - optional) ===
   temporal?: {
+    birthday?: string; // "March 15, 1990" or "1990-03-15"
     season_of_life?: string;
     significant_dates?: DateItem[];
     time_preference?: {
@@ -204,11 +319,15 @@ export function createEmptyManifest(userId: string): Omit<SoulManifest, "id"> {
     schema_version: CURRENT_SCHEMA_VERSION,
     created_at: now,
     updated_at: now,
+    raw_inputs: {},
     identity: {
       passions: [],
       purpose: [],
       superpowers: [],
       values: [],
+    },
+    interests: {
+      topics: [],
     },
     life_context: {
       eras: [],
