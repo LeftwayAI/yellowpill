@@ -14,6 +14,10 @@ export const POSTER_COLORS: Record<string, string> = {
   // === ACTIVE ===
   "quick-quote": "#8b7355",         // Warm brown (renamed from daily-dose)
   "scenes-future": "#8E2DE2",       // Vivid purple
+  "the-teacher": "#4a7c23",         // Chalkboard green
+  "moods": "#e94560",               // Deep pink/red
+  "pure-beauty": "#d4a574",         // Film grain warm
+  "mirror": "#fed6e3",              // Soft pink
   
   // === ARCHIVED (kept for backward compat) ===
   "daily-dose": "#8b7355",          // Alias for quick-quote
@@ -21,7 +25,6 @@ export const POSTER_COLORS: Record<string, string> = {
   "window-opener": "#2C5364",       // Deep teal
   "sage": "#5C5C5C",                // Charcoal
   "evergreen": "#71B280",           // Forest green
-  "mirror": "#A8EDEA",              // Soft mint
   "archivist": "#C9A227",           // Golden brown
   "muse": "#F5576C",                // Coral pink
   "project-pulse": "#3B82F6",       // Electric blue

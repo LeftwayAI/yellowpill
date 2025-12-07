@@ -273,11 +273,293 @@ Generate ONLY the post content.`;
 }
 
 // ============================================
+// THE TEACHER - Educational content with topic seeding
+// ============================================
+
+const TEACHING_DECADES = [
+  "1600s", "1700s", "1750s", "1800s", "1820s", "1850s", "1870s", 
+  "1890s", "1900s", "1910s", "1920s", "1930s", "1940s", "1950s", 
+  "1960s", "1970s", "1980s", "1990s", "2000s", "2010s"
+];
+
+const TEACHING_ANGLES = [
+  { angle: "origin_story", prompt: "the surprising origin or etymology of" },
+  { angle: "how_it_works", prompt: "how something actually works (the mechanism behind)" },
+  { angle: "history_of", prompt: "a fascinating historical moment or turning point in" },
+  { angle: "counterintuitive", prompt: "something counterintuitive or surprising about" },
+  { angle: "mental_model", prompt: "a useful mental model or framework from" },
+  { angle: "forgotten_pioneer", prompt: "a lesser-known pioneer or inventor in" },
+];
+
+export async function generateTeacherPost(
+  poster: Poster,
+  postType: PostType,
+  soulSummary: string
+): Promise<{ content: string }> {
+  // Generate seed for variety
+  const decade = TEACHING_DECADES[Math.floor(Math.random() * TEACHING_DECADES.length)];
+  const angle = TEACHING_ANGLES[Math.floor(Math.random() * TEACHING_ANGLES.length)];
+
+  const searchPrompt = `Given this person's interests and context:
+
+${soulSummary}
+
+Find something fascinating to teach them about. Use this seed for variety:
+- Time period to draw from: ${decade}
+- Teaching angle: ${angle.prompt}
+
+Look for topics that connect to their stated interests, industry, or challenges.
+
+Requirements:
+1. Must be REAL, verifiable information
+2. Should be surprising or lesser-known (not obvious facts)
+3. Must connect to something they care about
+4. Should be useful or thought-provoking, not just trivia
+
+Return:
+- The topic/subject
+- Why it's relevant to them
+- The fascinating detail or insight
+- How they might use or think about this`;
+
+  const searchResults = await grokChat(
+    "You are a teacher finding fascinating, relevant knowledge for a specific person. Only cite real, verifiable information.",
+    [{ role: "user", content: searchPrompt }],
+    { model: GROK_MODELS.GROK_3, temperature: 0.7, max_tokens: 800 }
+  );
+
+  const writePrompt = `Based on this research:
+
+${searchResults}
+
+Write a "${postType.type}" post for "${poster.name}" (${poster.tagline}).
+
+Style guide:
+${poster.style_guide}
+
+Rules:
+- Lead with the hook — the surprising or interesting part
+- Make the connection to their life subtle, not explicit
+- End with something actionable or a new way to think about it
+- Never use the reader's name
+- Under ${postType.max_length} characters
+- Write like you're genuinely excited to share this
+
+Generate ONLY the post content.`;
+
+  const content = await grokChat(
+    poster.system_prompt,
+    [{ role: "user", content: writePrompt }],
+    { model: GROK_MODELS.GROK_3, temperature: 0.6, max_tokens: 500 }
+  );
+
+  return { content: content.trim() };
+}
+
+// ============================================
+// MOODS - Abstract emotional visualizations
+// ============================================
+
+export async function generateMoodPost(
+  poster: Poster,
+  postType: PostType,
+  soulSummary: string
+): Promise<{ content: string; imageUrl: string | null }> {
+  
+  // Step 1: Extract emotional essence
+  const emotionAnalysis = await grokChat(
+    `You are an artist translating emotional states into visual language.
+    
+Given this person's soul context, identify:
+1. Their dominant emotional tension right now
+2. The COLOR PALETTE that represents this (specific colors, not vague)
+3. The TEXTURE or MOVEMENT (static, flowing, turbulent, crystalline, etc.)
+4. A single evocative word or short phrase (max 5 words) that captures the mood`,
+    [{ 
+      role: "user", 
+      content: `Soul context:
+${soulSummary}
+
+Analyze their emotional landscape. Focus on:
+- Tensions they're holding
+- What weighs on them
+- The vibe of their current life phase
+- Any aesthetic preferences mentioned
+
+Return:
+TENSION: [the core emotional tension]
+COLORS: [3-5 specific colors with hex codes]
+TEXTURE: [visual texture/movement description]
+MOOD_WORD: [1-5 word evocative caption]`
+    }],
+    { model: GROK_MODELS.GROK_4_FAST_REASONING, temperature: 0.8, max_tokens: 300 }
+  );
+
+  // Parse the mood word for caption
+  const moodMatch = emotionAnalysis.match(/MOOD_WORD:\s*(.+?)(?=\n|$)/);
+  const caption = moodMatch?.[1]?.trim() || "—";
+
+  // Step 2: Generate abstract image prompt
+  const imagePromptGeneration = await grokChat(
+    `You are generating an abstract art image based on emotional analysis.`,
+    [{ 
+      role: "user", 
+      content: `Emotional analysis:
+${emotionAnalysis}
+
+Generate an image prompt for an ABSTRACT piece that captures this emotional state.
+
+Style requirements:
+- Abstract expressionist / color field painting aesthetic
+- Moody, cinematic lighting
+- Rich textures and gradients
+- NO people, NO faces, NO text, NO recognizable objects
+- Think: Rothko, Turrell, atmospheric film stills, album art
+- Use the specific colors mentioned in the analysis
+
+Format: A single detailed image generation prompt.`
+    }],
+    { model: GROK_MODELS.GROK_3, temperature: 0.7, max_tokens: 300 }
+  );
+
+  console.log("[Moods] Emotion analysis:", emotionAnalysis);
+  console.log("[Moods] Image prompt:", imagePromptGeneration);
+
+  // Step 3: Generate the image
+  let imageUrl: string | null = null;
+  
+  try {
+    const imageResponse = await grokGenerateImage({
+      prompt: imagePromptGeneration.trim(),
+      response_format: "url",
+    });
+    
+    imageUrl = imageResponse.data[0]?.url || null;
+    console.log("[Moods] Image generated:", imageUrl ? "success" : "no url");
+  } catch (error) {
+    console.error("[Moods] Image generation failed:", error);
+  }
+
+  return {
+    content: caption,
+    imageUrl,
+  };
+}
+
+// ============================================
+// PURE BEAUTY - Film grain aesthetic imagery
+// ============================================
+
+const BEAUTY_SUBJECTS = [
+  "morning light through a window",
+  "rain on glass",
+  "empty street at dawn",
+  "light through leaves",
+  "fog over water",
+  "last light of day",
+  "shadows on a wall",
+  "quiet corner of a room",
+  "flowers in natural light",
+  "clouds at golden hour",
+  "reflections in a puddle",
+  "dust particles in sunlight",
+  "frost on a window",
+  "empty chair by a window",
+  "books stacked by afternoon light",
+];
+
+const BEAUTY_TIMES = [
+  "dawn, first light",
+  "golden hour, warm glow", 
+  "blue hour, soft twilight",
+  "overcast, soft diffused light",
+  "harsh midday sun creating strong shadows",
+  "late afternoon, long shadows",
+];
+
+export async function generatePureBeautyPost(
+  poster: Poster,
+  postType: PostType,
+  soulSummary: string
+): Promise<{ content: string; imageUrl: string | null }> {
+  
+  // Random seeds for variety
+  const baseSubject = BEAUTY_SUBJECTS[Math.floor(Math.random() * BEAUTY_SUBJECTS.length)];
+  const timeOfDay = BEAUTY_TIMES[Math.floor(Math.random() * BEAUTY_TIMES.length)];
+
+  // Step 1: Personalize the beauty
+  const sceneGeneration = await grokChat(
+    `You are a film photographer finding quiet beauty.`,
+    [{ 
+      role: "user", 
+      content: `Soul context (for subtle inspiration):
+${soulSummary}
+
+Starting point: ${baseSubject}
+Time: ${timeOfDay}
+
+Create a beautiful photographic scene. Consider:
+- Places they've lived or dream of (use subtly if relevant)
+- Their aesthetic preferences (if mentioned)
+- The season
+
+But remember: this is about UNIVERSAL BEAUTY. The connection to them should be subtle or even absent — this is just something beautiful to look at.
+
+Return:
+SCENE: [1-2 sentence description of the exact scene]
+CAPTION: [1 word or "—" for silence]`
+    }],
+    { model: GROK_MODELS.GROK_3, temperature: 0.8, max_tokens: 200 }
+  );
+
+  // Parse
+  const sceneMatch = sceneGeneration.match(/SCENE:\s*(.+?)(?=CAPTION:|$)/s);
+  const captionMatch = sceneGeneration.match(/CAPTION:\s*(.+?)(?=\n|$)/);
+  
+  const scene = sceneMatch?.[1]?.trim() || baseSubject;
+  const caption = captionMatch?.[1]?.trim() || "—";
+
+  // Step 2: Generate the film photography image
+  const imagePrompt = `${scene}
+
+Style: 35mm film photography, Kodak Portra 400 film stock aesthetic. Natural film grain, slight vignette. ${timeOfDay}. Soft, natural lighting. Slightly desaturated, warm earth tones. Shallow depth of field. Composition feels candid and discovered, not staged. The beauty of ordinary moments. High quality, professional photography.`;
+
+  console.log("[Pure Beauty] Scene:", scene);
+  console.log("[Pure Beauty] Image prompt:", imagePrompt);
+
+  let imageUrl: string | null = null;
+  
+  try {
+    const imageResponse = await grokGenerateImage({
+      prompt: imagePrompt,
+      response_format: "url",
+    });
+    
+    imageUrl = imageResponse.data[0]?.url || null;
+    console.log("[Pure Beauty] Image generated:", imageUrl ? "success" : "no url");
+  } catch (error) {
+    console.error("[Pure Beauty] Image generation failed:", error);
+  }
+
+  return {
+    content: caption,
+    imageUrl,
+  };
+}
+
+// ============================================
 // Check if a poster needs special handling
 // ============================================
 
 export function needsSpecialHandler(posterId: string): boolean {
-  return ["on-this-day", "visual-dreams", "kindred-spirits"].includes(posterId);
+  return [
+    "on-this-day", 
+    "visual-dreams", 
+    "kindred-spirits",
+    "the-teacher",
+    "moods",
+    "pure-beauty",
+  ].includes(posterId);
 }
 
 export async function runSpecialPoster(
@@ -294,6 +576,15 @@ export async function runSpecialPoster(
     
     case "kindred-spirits":
       return generateKindredSpirit(poster, postType, soulSummary);
+    
+    case "the-teacher":
+      return generateTeacherPost(poster, postType, soulSummary);
+    
+    case "moods":
+      return generateMoodPost(poster, postType, soulSummary);
+    
+    case "pure-beauty":
+      return generatePureBeautyPost(poster, postType, soulSummary);
     
     default:
       throw new Error(`No special handler for poster: ${poster.id}`);

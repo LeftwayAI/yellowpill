@@ -29,6 +29,8 @@ interface FeedPost {
   pilled: boolean;
   created_at: string;
   poster: PosterInfo;
+  // For inline replies
+  replies?: { role: "user" | "assistant"; content: string }[];
 }
 
 export default function FeedPage() {
@@ -150,6 +152,37 @@ export default function FeedPage() {
       .eq("id", postId);
   }, []);
 
+  const handleReply = useCallback(async (postId: string, message: string): Promise<string | null> => {
+    if (isDevModeEnabled()) {
+      // Simulate response in dev mode
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return "That's interesting! I'll keep that in mind.|||Noted your thoughts";
+    }
+
+    try {
+      const response = await fetch("/api/posts/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, message }),
+      });
+
+      if (!response.ok) {
+        console.error("Reply failed:", await response.text());
+        return null;
+      }
+
+      const data = await response.json();
+      // Return response and manifest update combined
+      if (data.manifestUpdate) {
+        return `${data.response}|||${data.manifestUpdate}`;
+      }
+      return data.response;
+    } catch (err) {
+      console.error("Reply error:", err);
+      return null;
+    }
+  }, []);
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -234,6 +267,7 @@ export default function FeedPage() {
                 post={post}
                 onFeedback={handleFeedback}
                 onSeen={markAsSeen}
+                onReply={handleReply}
                 delay={index * 0.05}
                 formatTimeAgo={formatTimeAgo}
               />
@@ -249,6 +283,7 @@ interface PostCardProps {
   post: FeedPost;
   onFeedback: (id: string, feedback: "up" | "down") => void;
   onSeen: (id: string) => void;
+  onReply: (postId: string, message: string) => Promise<string | null>;
   delay: number;
   formatTimeAgo: (date: string) => string;
 }
@@ -279,13 +314,64 @@ function generateOrbPositions(postId: string) {
   return orbs;
 }
 
-function PostCard({ post, onFeedback, onSeen, delay, formatTimeAgo }: PostCardProps) {
+function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: PostCardProps) {
   const router = useRouter();
   const [hasSeen, setHasSeen] = useState(post.seen);
+  const [showReply, setShowReply] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
+  const [replies, setReplies] = useState<{ role: "user" | "assistant"; content: string }[]>(post.replies || []);
+  const [manifestUpdate, setManifestUpdate] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
   
   // Get accent color for this poster
   const accentColor = post.poster.accent_color || POSTER_COLORS[post.poster_id] || "#FCC800";
+
+  // Focus input when reply opens
+  useEffect(() => {
+    if (showReply && replyInputRef.current) {
+      replyInputRef.current.focus();
+    }
+  }, [showReply]);
+
+  const handleReplySubmit = async () => {
+    if (!replyText.trim() || isReplying) return;
+    
+    setIsReplying(true);
+    const userMessage = replyText.trim();
+    setReplyText("");
+    
+    // Add user message to thread immediately
+    setReplies(prev => [...prev, { role: "user", content: userMessage }]);
+    
+    // Send to API
+    const response = await onReply(post.id, userMessage);
+    
+    if (response) {
+      // Parse response - format is "RESPONSE|||MANIFEST_UPDATE" or just response
+      const parts = response.split("|||");
+      const assistantResponse = parts[0];
+      const update = parts[1] || null;
+      
+      setReplies(prev => [...prev, { role: "assistant", content: assistantResponse }]);
+      
+      if (update) {
+        setManifestUpdate(update);
+        // Clear after 4 seconds
+        setTimeout(() => setManifestUpdate(null), 4000);
+      }
+    }
+    
+    setIsReplying(false);
+  };
+
+  const handleReplyKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleReplySubmit();
+    }
+  };
   
   // Generate orb positions - big floating circles
   const orbs = generateOrbPositions(post.id);
@@ -426,20 +512,25 @@ function PostCard({ post, onFeedback, onSeen, delay, formatTimeAgo }: PostCardPr
 
           {/* Actions - aligned with content */}
           <div className="flex items-center gap-1 mt-3 -ml-2">
+            {/* Reply button - first */}
             <ActionButton
-              active={post.feedback === "down"}
-              activeColor="text-red-400"
-              onClick={() => onFeedback(post.id, "down")}
+              active={showReply}
+              activeColor="text-[#FCC800]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowReply(!showReply);
+              }}
             >
               <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={1.5}
-                  d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"
+                  d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
                 />
               </svg>
             </ActionButton>
+            {/* Thumbs up */}
             <ActionButton
               active={post.feedback === "up"}
               activeColor="text-green-400"
@@ -454,28 +545,87 @@ function PostCard({ post, onFeedback, onSeen, delay, formatTimeAgo }: PostCardPr
                 />
               </svg>
             </ActionButton>
-            <ActionButton>
+            {/* Thumbs down */}
+            <ActionButton
+              active={post.feedback === "down"}
+              activeColor="text-red-400"
+              onClick={() => onFeedback(post.id, "down")}
+            >
               <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={1.5}
-                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                />
-              </svg>
-            </ActionButton>
-            {/* Reply button */}
-            <ActionButton>
-              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
+                  d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"
                 />
               </svg>
             </ActionButton>
           </div>
+
+          {/* Manifest update toast */}
+          {manifestUpdate && (
+            <div 
+              className="mt-3 px-3 py-2 rounded-lg text-sm animate-fade-in"
+              style={{ background: `${accentColor}20`, borderLeft: `2px solid ${accentColor}` }}
+            >
+              <span className="text-[var(--foreground-muted)]">✓ {manifestUpdate}</span>
+            </div>
+          )}
+
+          {/* Reply thread */}
+          {(showReply || replies.length > 0) && (
+            <div className="mt-3 border-t border-[#222] pt-3" onClick={(e) => e.stopPropagation()}>
+              {/* Existing replies */}
+              {replies.map((reply, idx) => (
+                <div 
+                  key={idx} 
+                  className={`mb-3 ${reply.role === "user" ? "pl-4 border-l-2 border-[#333]" : ""}`}
+                >
+                  <span className="text-xs text-[var(--foreground-subtle)] mb-1 block">
+                    {reply.role === "user" ? "You" : post.poster.name}
+                  </span>
+                  <p className="text-[var(--foreground)] text-sm leading-relaxed">
+                    {reply.content}
+                  </p>
+                </div>
+              ))}
+              
+              {/* Reply input */}
+              {showReply && (
+                <div className="flex gap-2 items-end">
+                  <textarea
+                    ref={replyInputRef}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={handleReplyKeyDown}
+                    placeholder="Reply..."
+                    rows={1}
+                    disabled={isReplying}
+                    className="flex-1 resize-none text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none disabled:opacity-50"
+                    style={{ 
+                      background: 'transparent', 
+                      border: 'none', 
+                      boxShadow: 'none',
+                      padding: '8px 0',
+                      borderRadius: 0,
+                      borderBottom: '1px solid #333',
+                    }}
+                  />
+                  <button
+                    onClick={handleReplySubmit}
+                    disabled={!replyText.trim() || isReplying}
+                    className="px-3 py-1.5 rounded-full text-sm font-medium transition-all disabled:opacity-30"
+                    style={{ 
+                      background: replyText.trim() ? accentColor : '#333',
+                      color: replyText.trim() ? '#000' : '#666',
+                    }}
+                  >
+                    {isReplying ? "..." : "Send"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -487,7 +637,7 @@ interface ActionButtonProps {
   active?: boolean;
   activeColor?: string;
   accentColor?: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 function ActionButton({
