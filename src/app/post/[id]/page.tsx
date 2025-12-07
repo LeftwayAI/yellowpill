@@ -165,76 +165,87 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const blobs = generateBlobPositions(post.id);
 
   return (
-    <main className="min-h-screen bg-black">
-      <Header showProfile={false} />
-
-      {/* Back button */}
-      <div className="max-w-xl mx-auto px-4 pt-4">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-[var(--foreground-muted)] hover:text-white transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
+    <main className="min-h-screen bg-black relative overflow-hidden">
+      {/* Full-page floating orb blobs in background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+        {blobs.map((blob, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full blur-3xl opacity-20 animate-blob"
+            style={{
+              width: blob.size * 2,
+              height: blob.size * 2,
+              left: `${blob.x}%`,
+              top: `${blob.y}%`,
+              background: accentColor,
+              animationDelay: `${blob.delay}s`,
+              animationDuration: `${blob.duration}s`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        ))}
       </div>
+      
+      {/* Semi-transparent overlay for readability */}
+      <div className="fixed inset-0 bg-black/70 pointer-events-none" style={{ zIndex: 1 }} />
 
-      {/* Post detail */}
-      <div className="max-w-xl mx-auto px-4 py-6">
-        <div className="relative overflow-hidden rounded-2xl">
-          {/* Floating orb blobs in background */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {blobs.map((blob, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full blur-3xl opacity-25 animate-blob"
-                style={{
-                  width: blob.size,
-                  height: blob.size,
-                  left: `${blob.x}%`,
-                  top: `${blob.y}%`,
-                  background: accentColor,
-                  animationDelay: `${blob.delay}s`,
-                  animationDuration: `${blob.duration}s`,
-                  transform: 'translate(-50%, -50%)',
-                }}
-              />
-            ))}
-          </div>
-          
-          {/* Semi-transparent overlay */}
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-md pointer-events-none" />
+      {/* Content layer */}
+      <div className="relative" style={{ zIndex: 2 }}>
+        <Header showProfile={false} />
+
+        {/* Back button */}
+        <div className="max-w-xl mx-auto px-4 pt-4">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-[var(--foreground-muted)] hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
+        </div>
+
+        {/* Post detail */}
+        <div className="max-w-xl mx-auto px-4 py-6">
+          <div className="relative overflow-hidden rounded-2xl">
+            {/* Card background */}
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-none" />
           
           {/* Content */}
           <div className="relative z-10 p-6">
             {/* Poster header */}
             <div className="flex items-center gap-4 mb-6">
-              {/* Orb-like avatar with northern lights effect */}
+              {/* Orb-like avatar with northern lights effect - contained */}
               <button
                 onClick={() => router.push(`/poster/${post.poster_id}`)}
                 className="relative w-14 h-14 rounded-full overflow-hidden group/avatar flex-shrink-0"
               >
-                {/* Northern lights ambient glow */}
+                {/* Base dark background */}
+                <div className="absolute inset-0 rounded-full bg-black/80" />
+                {/* Northern lights aurora - contained within circle */}
                 <div 
-                  className="absolute inset-0 animate-aurora"
+                  className="absolute inset-0 rounded-full animate-aurora-drift"
                   style={{ 
-                    background: `radial-gradient(ellipse at 30% 20%, ${accentColor}40, transparent 50%),
-                                radial-gradient(ellipse at 70% 80%, ${accentColor}30, transparent 50%),
-                                radial-gradient(ellipse at 50% 50%, ${accentColor}20, transparent 60%)`,
+                    background: `
+                      radial-gradient(ellipse 120% 80% at 20% 20%, ${accentColor}80, transparent 50%),
+                      radial-gradient(ellipse 100% 100% at 80% 80%, ${accentColor}60, transparent 45%),
+                      radial-gradient(ellipse 80% 120% at 50% 50%, ${accentColor}40, transparent 60%)
+                    `,
                   }}
                 />
-                {/* Orb inner glow */}
+                {/* Second aurora layer with offset animation */}
                 <div 
-                  className="absolute inset-[2px] rounded-full"
+                  className="absolute inset-0 rounded-full animate-aurora-drift-2"
                   style={{ 
-                    background: `radial-gradient(circle at 30% 30%, ${accentColor}60, ${accentColor}30 40%, ${accentColor}10 70%, transparent)`,
-                    boxShadow: `0 0 30px ${accentColor}40, inset 0 0 20px ${accentColor}20`,
+                    background: `
+                      radial-gradient(ellipse 90% 120% at 70% 30%, ${accentColor}50, transparent 50%),
+                      radial-gradient(ellipse 110% 90% at 30% 70%, ${accentColor}40, transparent 45%)
+                    `,
                   }}
                 />
                 {/* Glass overlay */}
-                <div className="absolute inset-[2px] rounded-full bg-gradient-to-br from-white/10 to-transparent" />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 via-transparent to-transparent" />
               </button>
               
               <div className="flex-1">
@@ -246,10 +257,10 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                     {post.poster.name}
                   </button>
                   <span 
-                    className="inline-flex items-center justify-center w-5 h-5 rounded-full"
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full -mt-0.5"
                     style={{ background: accentColor }}
                   >
-                    <svg className="w-3 h-3 text-black" viewBox="0 0 24 24" fill="currentColor">
+                    <svg className="w-2.5 h-2.5 text-black" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                     </svg>
                   </span>
@@ -321,27 +332,28 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {/* Reply section */}
+        {/* Reply section - smaller */}
         <div className="mt-6">
-          <h3 className="text-lg font-medium text-white mb-4">Reply</h3>
-          <div className="border border-[#222] rounded-xl p-4">
+          <h3 className="text-sm font-medium text-[var(--foreground-muted)] mb-2">Reply</h3>
+          <div className="border border-[#222] rounded-lg p-3 bg-black/40">
             <textarea
               value={reply}
               onChange={(e) => setReply(e.target.value)}
               placeholder="What are you thinking?"
-              rows={4}
-              className="w-full bg-transparent border-0 p-0 resize-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:ring-0"
+              rows={2}
+              className="w-full bg-transparent border-0 p-0 resize-none text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:ring-0"
             />
-            <div className="flex justify-end mt-3">
+            <div className="flex justify-end mt-2">
               <button
                 onClick={handleSubmitReply}
                 disabled={!reply.trim()}
-                className="btn-primary px-6 py-2 text-sm disabled:opacity-40"
+                className="btn-primary px-4 py-1.5 text-sm disabled:opacity-40"
               >
                 Reply
               </button>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </main>

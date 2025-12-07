@@ -18,6 +18,10 @@ export const POSTER_COLORS: Record<string, string> = {
   "moods": "#e94560",               // Deep pink/red
   "pure-beauty": "#d4a574",         // Film grain warm
   "mirror": "#fed6e3",              // Soft pink
+  "the-scout": "#10B981",           // Emerald green - real-time search
+  "big-question": "#0f3460",        // Deep midnight blue
+  "gentle-nudge": "#56ab91",        // Soft sage green
+  "the-historian": "#CD853F",       // Peru/antique gold - history
   
   // === ARCHIVED (kept for backward compat) ===
   "daily-dose": "#8b7355",          // Alias for quick-quote

@@ -1,7 +1,8 @@
 // Special poster handlers that need custom logic
 // (e.g., real-time data, image generation, external APIs)
 
-import { grokChat, grokGenerateImage, GROK_MODELS } from "./grok";
+import { grokChat, grokGenerateImage, grokLiveSearch, GROK_MODELS } from "./grok";
+import type { SearchSource } from "./grok";
 import type { Poster, PostType } from "@/types/database";
 
 // ============================================
@@ -97,8 +98,20 @@ Generate ONLY the post content.`;
 
 // ============================================
 // VISUAL DREAMS / FUTURE VISUALIZER - Generates actual images
-// Creates tangential, adjacent scenes - NOT literal interpretations
+// Creates subtle, atmospheric scenes - landscapes, scenery, simple subjects
 // ============================================
+
+// Scene types for variety - all focused on simple, atmospheric imagery
+const VISUAL_DREAM_SEEDS = [
+  { type: "landscape", prompt: "a serene natural landscape that feels like home" },
+  { type: "light", prompt: "a play of light and shadow that evokes peace" },
+  { type: "horizon", prompt: "a distant horizon at a transitional time of day" },
+  { type: "solitude", prompt: "a quiet, still scene with a single focal point" },
+  { type: "path", prompt: "a pathway or road suggesting journey and possibility" },
+  { type: "refuge", prompt: "a cozy, intimate space that feels like sanctuary" },
+  { type: "nature", prompt: "a close detail from nature - leaves, water, stone" },
+  { type: "sky", prompt: "an expressive sky that mirrors an emotional state" },
+];
 
 export async function generateVisualDream(
   poster: Poster,
@@ -106,49 +119,50 @@ export async function generateVisualDream(
   soulSummary: string
 ): Promise<{ content: string; imageUrl: string | null }> {
   
-  // Step 1: Generate a TANGENTIAL scene concept first
+  // Pick a random seed for variety
+  const seed = VISUAL_DREAM_SEEDS[Math.floor(Math.random() * VISUAL_DREAM_SEEDS.length)];
+  
+  // Step 1: Generate a subtle, atmospheric scene concept
   const sceneConceptPrompt = await grokChat(
-    `You are an imaginative director who creates visual daydreams for someone's future.
+    `You are a contemplative visual artist creating atmospheric imagery.
 
-=== THE MOST IMPORTANT RULE ===
+=== YOUR APPROACH ===
 
-DO NOT visualize what they explicitly said they wanted.
+Create SIMPLE, SUBTLE scenes. Not complex. Not busy. Not literal.
 
-If they said "write a book" → DO NOT show books, writing, desks, publishing
-If they said "financial freedom" → DO NOT show money, luxury, retirement
-If they said "start a company" → DO NOT show offices, meetings, products
+Focus on:
+- SCENERY and LANDSCAPES — natural environments, horizons, skies
+- ATMOSPHERE and MOOD — the feeling in the air, the quality of light
+- SINGLE FOCAL POINTS — one subject, not many
+- SPACE and STILLNESS — let the image breathe
 
-Instead, imagine what would make THIS SPECIFIC PERSON happy based on WHO THEY ARE:
+Avoid:
+- Multiple subjects or complex compositions
+- Anything too specific or personal
+- Busy, cluttered scenes
+- Obvious symbolism or metaphors
 
-1. SENSORY PLEASURES they'd love: A specific quality of light. A sound. A temperature. A texture.
+The image should feel like a meditation. A breath. A moment of quiet beauty.
 
-2. QUIET EVIDENCE OF ARRIVAL: What mundane moments would only exist if everything went well? 
-   - A specific type of nap they'd finally take without guilt
-   - A phone call from a parent asking THEM for advice
-   - An airport departure board showing somewhere unexpected
-   - A pet curled up next to them on a couch they love
-
-3. UNEXPECTED JOYS: Based on their personality, what might they discover they love?
-   - The collector who has a garden now
-   - The type-A achiever who's really into pottery
-   - The introvert hosting a dinner party they actually enjoy
-
-The image should make them think "I didn't know I wanted that" not "That's exactly what I told you."`,
+Think: the view from a window, a path through trees, light on water, a distant mountain, an empty beach at dawn.`,
     [{ 
       role: "user", 
-      content: `Soul context:
+      content: `Starting point for this piece: ${seed.prompt}
+
+Soul context (use SUBTLY for mood/atmosphere, not literally):
 ${soulSummary}
 
-Based on who this person IS (not just what they said they want), imagine a visual scene that would bring them unexpected joy.
+Imagine a simple, beautiful scene. Something that feels like a visual exhale.
 
-Think about:
-- What sensory experience would make their specific personality type light up?
-- What quiet moment of arrival would only exist if their deeper values were being lived?
-- What hobby/pleasure/scene would surprise them but feel perfectly "them"?
+CONSTRAINTS:
+- ONE main subject or focal point
+- Emphasis on landscape, light, or atmosphere
+- No people, no specific objects that reference their life
+- Let the viewer fill in meaning
 
-Describe the scene concept in 2-3 sentences. Be VERY SPECIFIC about visual details.`
+Describe the scene in 1-2 sentences. Keep it simple and evocative.`
     }],
-    { model: GROK_MODELS.GROK_4_FAST_REASONING, temperature: 0.9, max_tokens: 300 }
+    { model: GROK_MODELS.GROK_3, temperature: 0.85, max_tokens: 200 }
   );
 
   // Step 2: Turn concept into caption and image prompt
@@ -157,20 +171,26 @@ Describe the scene concept in 2-3 sentences. Be VERY SPECIFIC about visual detai
 
 ${sceneConceptPrompt}
 
-You need to generate TWO things:
-1. A short, evocative caption (2-3 sentences, cinematic, present tense, second person "you")
-2. An image generation prompt (detailed, photorealistic, NO PEOPLE OR FACES, focus on environment/objects)`,
+Generate TWO things:
+1. A minimal caption (1 short sentence OR just "—" for silence)
+2. An image prompt focused on SIMPLICITY and ATMOSPHERE`,
     [{ 
       role: "user", 
       content: `Generate:
-1. CAPTION: [2-3 sentences, cinematic, under ${postType.max_length} chars, no names, present tense]
-2. IMAGE_PROMPT: [Detailed prompt for photorealistic image. CRITICAL: Do NOT include any people, faces, or human figures. Focus on: setting, objects, lighting, atmosphere, time of day, textures, colors. Style: cinematic photography, shallow depth of field, natural lighting]
+1. CAPTION: [One short poetic sentence or "—". Under ${postType.max_length} chars. Present tense. No names.]
+2. IMAGE_PROMPT: [Simple, atmospheric image. CRITICAL RULES:
+   - NO people, faces, or human figures
+   - ONE main subject or landscape
+   - Emphasis on: natural light, texture, atmosphere, space
+   - Style: fine art photography, contemplative, minimal composition
+   - Think: landscape photography, light studies, nature details
+   - NOT busy, NOT complex, NOT symbolic]
 
 Format exactly as:
-CAPTION: [your caption]
-IMAGE_PROMPT: [your image prompt]`
+CAPTION: [caption]
+IMAGE_PROMPT: [prompt]`
     }],
-    { model: GROK_MODELS.GROK_3, temperature: 0.7, max_tokens: 600 }
+    { model: GROK_MODELS.GROK_3, temperature: 0.7, max_tokens: 500 }
   );
 
   // Parse the response
@@ -548,6 +568,224 @@ Style: 35mm film photography, Kodak Portra 400 film stock aesthetic. Natural fil
 }
 
 // ============================================
+// THE SCOUT - Real-time search with Live Search API
+// Finds relevant content from web, news, and X
+// ============================================
+
+interface ScoutPostType extends PostType {
+  search_focus?: string[];
+}
+
+export async function generateScoutPost(
+  poster: Poster,
+  postType: ScoutPostType,
+  soulSummary: string
+): Promise<{ content: string; citations?: string[] }> {
+  
+  // Determine which sources to search based on post type
+  const searchFocus = postType.search_focus || ["web", "news", "x"];
+  const sources: SearchSource[] = searchFocus.map(focus => {
+    switch (focus) {
+      case "web":
+        return { type: "web" as const };
+      case "news":
+        return { type: "news" as const };
+      case "x":
+        return { type: "x" as const, post_favorite_count: 50 }; // Filter for quality
+      default:
+        return { type: "web" as const };
+    }
+  });
+
+  // Step 1: Build search query based on post type and soul
+  const queryPrompt = await grokChat(
+    `You are preparing a search query to find relevant content for someone.`,
+    [{ 
+      role: "user", 
+      content: `Post type: ${postType.type}
+Description: ${postType.description}
+
+Soul context:
+${soulSummary}
+
+Based on this, create a focused search query to find something relevant and interesting for them. 
+The query should be specific enough to get targeted results but broad enough to find unexpected gems.
+
+Consider:
+- Their industry, interests, and location
+- Current trends in areas they care about
+- Things that would genuinely help or interest them
+
+Return ONLY the search query (1-3 sentences describing what to search for).`
+    }],
+    { model: GROK_MODELS.GROK_4_FAST, temperature: 0.6, max_tokens: 150 }
+  );
+
+  console.log("[Scout] Search query:", queryPrompt);
+  console.log("[Scout] Sources:", searchFocus);
+
+  // Step 2: Execute Live Search
+  const searchPrompt = `You are The Scout, finding relevant content for this person.
+
+Soul context:
+${soulSummary}
+
+Search for: ${queryPrompt}
+
+Post type to create: ${postType.type}
+Description: ${postType.description}
+
+Find the most interesting, relevant, and timely result. Look for:
+- Recent developments (last few days if news/conversation)
+- Things they wouldn't have found on their own
+- Unexpected connections to their interests
+- Actionable or thought-provoking content
+
+When you find something good, include:
+1. The key finding/discovery
+2. Why it's relevant to them specifically
+3. A brief quote or detail that makes it compelling
+4. The source (if citing a specific article/post)`;
+
+  const searchResult = await grokLiveSearch(
+    poster.system_prompt,
+    searchPrompt,
+    {
+      sources,
+      maxResults: 8,
+      temperature: 0.5,
+    }
+  );
+
+  console.log("[Scout] Search result:", searchResult.content.substring(0, 200));
+  console.log("[Scout] Citations:", searchResult.citations);
+  console.log("[Scout] Sources used:", searchResult.sourcesUsed);
+
+  // Step 3: Format the final post
+  const formatPrompt = `Based on this search result:
+
+${searchResult.content}
+
+Citations available: ${searchResult.citations.join(", ") || "none"}
+
+Write a "${postType.type}" post for "${poster.name}" (${poster.tagline}).
+
+Style guide:
+${poster.style_guide}
+
+CRITICAL RULES:
+- Under ${postType.max_length} characters
+- Start with the discovery, not "I found..."
+- Include ONE relevant link if you have a citation (on its own line)
+- Make it feel like a genuine discovery, not a news roundup
+- Connect it to something in their soul context without being heavy-handed
+- Be excited but not breathless
+
+Generate ONLY the post content.`;
+
+  const content = await grokChat(
+    poster.system_prompt,
+    [{ role: "user", content: formatPrompt }],
+    { model: GROK_MODELS.GROK_3, temperature: 0.6, max_tokens: 600 }
+  );
+
+  return {
+    content: content.trim(),
+    citations: searchResult.citations,
+  };
+}
+
+// ============================================
+// THE HISTORIAN - Historical connections via Live Search + Grokipedia
+// ============================================
+
+interface HistorianPostType extends PostType {
+  search_focus?: string[];
+}
+
+export async function generateHistorianPost(
+  poster: Poster,
+  postType: HistorianPostType,
+  soulSummary: string
+): Promise<{ content: string; citations?: string[] }> {
+  
+  const today = new Date();
+  const month = today.toLocaleString("en-US", { month: "long" });
+  const day = today.getDate();
+  const dateContext = postType.type === "on_this_day" ? `Today is ${month} ${day}.` : "";
+
+  // Build search prompt based on post type
+  const searchPrompt = `You are The Historian, finding historical connections for this person.
+
+${dateContext}
+
+Soul context:
+${soulSummary}
+
+Post type: ${postType.type}
+Description: ${postType.description}
+
+Search for relevant historical information. Specifically look for:
+${postType.type === "origin_story" ? "- The origin or invention story of something they care about or use in their work" : ""}
+${postType.type === "parallel_lives" ? "- A historical figure who faced similar challenges, made similar pivots, or shared similar values" : ""}
+${postType.type === "place_history" ? "- Significant historical events that happened in their city or neighborhood" : ""}
+${postType.type === "on_this_day" ? "- Important events that happened on this exact date in history" : ""}
+${postType.type === "etymology" ? "- The surprising etymology or origin of a word/concept relevant to their interests" : ""}
+
+When you find something good:
+1. Include the historical fact or story
+2. Draw a subtle connection to their life
+3. Try to find a Grokipedia article link (grokipedia.com/wiki/[Topic])
+4. If no Grokipedia link, include another reliable source`;
+
+  const searchResult = await grokLiveSearch(
+    poster.system_prompt,
+    searchPrompt,
+    {
+      sources: [{ type: "web" as const }],
+      maxResults: 10,
+      temperature: 0.5,
+    }
+  );
+
+  console.log("[Historian] Search result:", searchResult.content.substring(0, 200));
+  console.log("[Historian] Citations:", searchResult.citations);
+
+  // Format the final post, preferring Grokipedia links
+  const formatPrompt = `Based on this research:
+
+${searchResult.content}
+
+Available citations: ${searchResult.citations.join(", ") || "none"}
+
+Write a "${postType.type}" post for "${poster.name}" (${poster.tagline}).
+
+Style guide:
+${poster.style_guide}
+
+CRITICAL RULES:
+- Under ${postType.max_length} characters
+- If there's a Grokipedia article (grokipedia.com), prioritize including that link
+- If no Grokipedia link available, include another source
+- Put the link on its own line at the end
+- Make the historical connection feel personal, not academic
+- Start with the hook, not "Did you know..."
+
+Generate ONLY the post content.`;
+
+  const content = await grokChat(
+    poster.system_prompt,
+    [{ role: "user", content: formatPrompt }],
+    { model: GROK_MODELS.GROK_3, temperature: 0.6, max_tokens: 600 }
+  );
+
+  return {
+    content: content.trim(),
+    citations: searchResult.citations,
+  };
+}
+
+// ============================================
 // Check if a poster needs special handling
 // ============================================
 
@@ -559,6 +797,8 @@ export function needsSpecialHandler(posterId: string): boolean {
     "the-teacher",
     "moods",
     "pure-beauty",
+    "the-scout",
+    "the-historian",
   ].includes(posterId);
 }
 
@@ -566,7 +806,7 @@ export async function runSpecialPoster(
   poster: Poster,
   postType: PostType,
   soulSummary: string
-): Promise<{ content: string; imageUrl?: string | null }> {
+): Promise<{ content: string; imageUrl?: string | null; citations?: string[] }> {
   switch (poster.id) {
     case "on-this-day":
       return generateOnThisDay(poster, postType, soulSummary);
@@ -585,6 +825,12 @@ export async function runSpecialPoster(
     
     case "pure-beauty":
       return generatePureBeautyPost(poster, postType, soulSummary);
+    
+    case "the-scout":
+      return generateScoutPost(poster, postType as ScoutPostType, soulSummary);
+    
+    case "the-historian":
+      return generateHistorianPost(poster, postType as HistorianPostType, soulSummary);
     
     default:
       throw new Error(`No special handler for poster: ${poster.id}`);

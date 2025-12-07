@@ -25,6 +25,50 @@ interface GrokMessage {
   content: string
 }
 
+// Live Search source types
+interface WebSearchSource {
+  type: "web"
+  country?: string
+  allowed_websites?: string[]
+  excluded_websites?: string[]
+  safe_search?: boolean
+}
+
+interface XSearchSource {
+  type: "x"
+  included_x_handles?: string[]
+  excluded_x_handles?: string[]
+  post_favorite_count?: number
+  post_view_count?: number
+}
+
+interface NewsSearchSource {
+  type: "news"
+  country?: string
+  excluded_websites?: string[]
+  safe_search?: boolean
+}
+
+interface RssSearchSource {
+  type: "rss"
+  links: string[]
+}
+
+type SearchSource =
+  | WebSearchSource
+  | XSearchSource
+  | NewsSearchSource
+  | RssSearchSource
+
+interface SearchParameters {
+  mode?: "auto" | "on" | "off"
+  return_citations?: boolean
+  from_date?: string // ISO8601 YYYY-MM-DD
+  to_date?: string // ISO8601 YYYY-MM-DD
+  max_search_results?: number
+  sources?: SearchSource[]
+}
+
 interface GrokCompletionOptions {
   messages: GrokMessage[]
   model?: string
@@ -38,6 +82,7 @@ interface GrokCompletionOptions {
       schema: Record<string, unknown>
     }
   }
+  search_parameters?: SearchParameters
 }
 
 interface GrokResponse {
@@ -57,7 +102,9 @@ interface GrokResponse {
     prompt_tokens: number
     completion_tokens: number
     total_tokens: number
+    num_sources_used?: number // Live Search: number of sources consulted
   }
+  citations?: string[] // Live Search: URLs of sources used
 }
 
 export async function grokCompletion(
@@ -82,6 +129,9 @@ export async function grokCompletion(
       max_tokens: options.max_tokens ?? 2048,
       ...(options.response_format && {
         response_format: options.response_format,
+      }),
+      ...(options.search_parameters && {
+        search_parameters: options.search_parameters,
       }),
     }),
   })
@@ -222,4 +272,73 @@ export async function grokChat(
   })
 
   return response.choices[0]?.message?.content || ""
+}
+
+// ============================================
+// Live Search (Web, X, News grounding)
+// ============================================
+
+interface LiveSearchResult {
+  content: string
+  citations: string[]
+  sourcesUsed: number
+}
+
+/**
+ * Grok with Live Search - queries real-time web, X, and news data
+ * Pricing: $0.025 per source used
+ */
+export async function grokLiveSearch(
+  systemPrompt: string,
+  userMessage: string,
+  options?: {
+    temperature?: number
+    model?: string
+    max_tokens?: number
+    sources?: SearchSource[]
+    fromDate?: string
+    toDate?: string
+    maxResults?: number
+  }
+): Promise<LiveSearchResult> {
+  const response = await grokCompletion({
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userMessage },
+    ],
+    model: options?.model ?? DEFAULT_MODELS.generation,
+    temperature: options?.temperature ?? 0.5,
+    max_tokens: options?.max_tokens ?? 1024,
+    search_parameters: {
+      mode: "on",
+      return_citations: true,
+      max_search_results: options?.maxResults ?? 10,
+      from_date: options?.fromDate,
+      to_date: options?.toDate,
+      sources: options?.sources ?? [
+        { type: "web" },
+        { type: "news" },
+        { type: "x" },
+      ],
+    },
+  })
+
+  return {
+    content: response.choices[0]?.message?.content || "",
+    citations: response.citations || [],
+    sourcesUsed: response.usage?.num_sources_used || 0,
+  }
+}
+
+// Export types for use in other modules
+export type {
+  GrokMessage,
+  GrokResponse,
+  SearchParameters,
+  SearchSource,
+  WebSearchSource,
+  XSearchSource,
+  NewsSearchSource,
+  RssSearchSource,
+  LiveSearchResult,
 }

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { isDevModeEnabled, TEST_MANIFEST, TEST_POSTS, POSTER_COLORS } from "@/lib/dev-auth";
 import { Header } from "@/components/Header";
 import { SpinningPill } from "@/components/SpinningPill";
+import { LinkPreview, extractUrls, removeUrlsFromText } from "@/components/LinkPreview";
 
 interface PosterInfo {
   id: string;
@@ -127,18 +128,22 @@ export default function FeedPage() {
   }, [router]);
 
   const handleFeedback = async (postId: string, feedback: "up" | "down") => {
+    // Find current post to check if we're toggling off
+    const currentPost = posts.find(p => p.id === postId);
+    const newFeedback = currentPost?.feedback === feedback ? null : feedback;
+    
     if (isDevModeEnabled()) {
       setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, feedback } : p))
+        prev.map((p) => (p.id === postId ? { ...p, feedback: newFeedback } : p))
       );
       return;
     }
 
     const supabase = createClient();
-    await supabase.from("posts").update({ feedback }).eq("id", postId);
+    await supabase.from("posts").update({ feedback: newFeedback }).eq("id", postId);
 
     setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, feedback } : p))
+      prev.map((p) => (p.id === postId ? { ...p, feedback: newFeedback } : p))
     );
   };
 
@@ -213,7 +218,7 @@ export default function FeedPage() {
       {/* Feed container with vertical rail lines */}
       <div className="max-w-xl mx-auto relative border-x border-[#222]">
         {/* What's on your mind - X style, simple */}
-        <div className="flex gap-3 px-4 py-3 border-b border-[#222]">
+        <div className="flex gap-3 px-4 py-4 border-b border-[#222]">
           {/* Gutter - user avatar */}
           <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
             {userProfileImage ? (
@@ -443,30 +448,36 @@ function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: P
       
       {/* Content - X-style gutter layout */}
       <div className="relative z-10 flex gap-3 px-4 py-3">
-        {/* Gutter - Orb-like avatar with lava lamp effect */}
+        {/* Gutter - Orb-like avatar with northern lights effect contained within circle */}
         <button
           onClick={handlePosterClick}
-          className="relative w-10 h-10 rounded-full overflow-visible flex-shrink-0 group/avatar"
+          className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 group/avatar"
         >
-          {/* Ambient lava glow that moves */}
+          {/* Base dark background */}
+          <div className="absolute inset-0 rounded-full bg-black/80" />
+          {/* Northern lights aurora - contained within circle */}
           <div 
-            className="absolute -inset-2 animate-lava-glow rounded-full opacity-60"
+            className="absolute inset-0 rounded-full animate-aurora-drift"
             style={{ 
-              background: `radial-gradient(ellipse at 30% 30%, ${accentColor}60, transparent 60%),
-                          radial-gradient(ellipse at 70% 70%, ${accentColor}40, transparent 50%)`,
-              filter: 'blur(8px)',
+              background: `
+                radial-gradient(ellipse 120% 80% at 20% 20%, ${accentColor}80, transparent 50%),
+                radial-gradient(ellipse 100% 100% at 80% 80%, ${accentColor}60, transparent 45%),
+                radial-gradient(ellipse 80% 120% at 50% 50%, ${accentColor}40, transparent 60%)
+              `,
             }}
           />
-          {/* Main orb */}
+          {/* Second aurora layer with offset animation */}
           <div 
-            className="absolute inset-0 rounded-full animate-orb-pulse"
+            className="absolute inset-0 rounded-full animate-aurora-drift-2"
             style={{ 
-              background: `radial-gradient(circle at 35% 35%, ${accentColor}90, ${accentColor}60 30%, ${accentColor}30 60%, transparent 80%)`,
-              boxShadow: `0 0 20px ${accentColor}50, inset 0 0 10px ${accentColor}30`,
+              background: `
+                radial-gradient(ellipse 90% 120% at 70% 30%, ${accentColor}50, transparent 50%),
+                radial-gradient(ellipse 110% 90% at 30% 70%, ${accentColor}40, transparent 45%)
+              `,
             }}
           />
           {/* Glass highlight */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/15 via-transparent to-transparent" />
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 via-transparent to-transparent" />
         </button>
         
         {/* Main content area - aligned with poster name */}
@@ -479,12 +490,12 @@ function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: P
             >
               {post.poster.name}
             </button>
-            {/* Verified badge */}
+            {/* Verified badge - smaller */}
             <span 
-              className="inline-flex items-center justify-center w-4 h-4 rounded-full"
+              className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full -mt-0.5"
               style={{ background: accentColor }}
             >
-              <svg className="w-2.5 h-2.5 text-black" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="w-2 h-2 text-black" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
               </svg>
             </span>
@@ -494,9 +505,14 @@ function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: P
           </div>
 
           {/* Content */}
-          <p className="text-[var(--foreground)] leading-relaxed text-[15px]">
-            {post.content}
+          <p className="text-[var(--foreground)] leading-relaxed text-[15px] whitespace-pre-wrap">
+            {removeUrlsFromText(post.content)}
           </p>
+
+          {/* Link Previews */}
+          {extractUrls(post.content).map((url, idx) => (
+            <LinkPreview key={idx} url={url} accentColor={accentColor} />
+          ))}
 
           {/* Image if present */}
           {post.image_url && (
@@ -511,7 +527,7 @@ function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: P
           )}
 
           {/* Actions - aligned with content */}
-          <div className="flex items-center gap-1 mt-3 -ml-2">
+          <div className="flex items-center gap-1 mt-2 -ml-2">
             {/* Reply button - first */}
             <ActionButton
               active={showReply}
@@ -526,7 +542,7 @@ function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: P
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={1.5}
-                  d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
+                  d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
                 />
               </svg>
             </ActionButton>
@@ -566,9 +582,9 @@ function PostCard({ post, onFeedback, onSeen, onReply, delay, formatTimeAgo }: P
           {manifestUpdate && (
             <div 
               className="mt-3 px-3 py-2 rounded-lg text-sm animate-fade-in"
-              style={{ background: `${accentColor}20`, borderLeft: `2px solid ${accentColor}` }}
+              style={{ background: `${accentColor}15`, borderLeft: `2px solid ${accentColor}` }}
             >
-              <span className="text-[var(--foreground-muted)]">✓ {manifestUpdate}</span>
+              <span className="text-[var(--foreground-muted)] italic">Got it. Updating my memory of you.</span>
             </div>
           )}
 

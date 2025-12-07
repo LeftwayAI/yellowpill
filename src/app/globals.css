@@ -441,3 +441,47 @@ textarea::placeholder {
 .animate-pill-fly {
   animation: pill-fly-up 0.5s ease-in forwards;
 }
+
+/* Aurora drift animation - northern lights effect within circle */
+@keyframes aurora-drift {
+  0%, 100% {
+    transform: translate(0%, 0%) rotate(0deg);
+    opacity: 0.8;
+  }
+  25% {
+    transform: translate(10%, -15%) rotate(10deg);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-5%, 10%) rotate(-5deg);
+    opacity: 0.6;
+  }
+  75% {
+    transform: translate(15%, 5%) rotate(15deg);
+    opacity: 0.9;
+  }
+}
+
+.animate-aurora-drift {
+  animation: aurora-drift 8s ease-in-out infinite;
+}
+
+/* Second aurora layer with different timing */
+@keyframes aurora-drift-2 {
+  0%, 100% {
+    transform: translate(0%, 0%) rotate(0deg);
+    opacity: 0.6;
+  }
+  33% {
+    transform: translate(-12%, 8%) rotate(-8deg);
+    opacity: 0.8;
+  }
+  66% {
+    transform: translate(8%, -10%) rotate(12deg);
+    opacity: 0.5;
+  }
+}
+
+.animate-aurora-drift-2 {
+  animation: aurora-drift-2 12s ease-in-out infinite;
+}
