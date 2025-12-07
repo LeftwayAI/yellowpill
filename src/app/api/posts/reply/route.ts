@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/server"
 import { grokChat, grokStructuredOutput, GROK_MODELS } from "@/lib/grok"
 import { NextResponse } from "next/server"
 
+// TODO: Add reply rate limiting (requires reply_log table or similar)
+// For now, auth + post ownership check provides basic protection
+
 // Schema for extracting manifest updates from conversation
 const MANIFEST_UPDATE_SCHEMA = {
   type: "object",

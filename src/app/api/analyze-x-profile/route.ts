@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 import { grokChat, grokStructuredOutput, GROK_MODELS } from "@/lib/grok"
 
 interface XProfile {
@@ -34,6 +35,16 @@ interface ProfileAnalysis {
 
 export async function POST(request: Request) {
   try {
+    // Auth check - prevent anonymous API abuse
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { xProfile }: { xProfile: XProfile } = await request.json()
 
     if (!xProfile || (!xProfile.bio && !xProfile.name)) {

@@ -9,6 +9,10 @@ import { needsSpecialHandler, runSpecialPoster } from "@/lib/special-posters";
 // How many posts to generate per request
 const POSTS_TO_GENERATE = 5;
 
+// Daily generation limits
+const DAILY_GENERATION_LIMIT = 50; // Max posts per user per day
+const DAILY_GENERATION_REQUESTS_LIMIT = 15; // Max generation requests per day
+
 // Similarity threshold - posts with higher overlap will be skipped
 const SIMILARITY_THRESHOLD = 0.35;
 
@@ -104,6 +108,34 @@ export async function POST(request: Request) {
 
     if (!userId) {
       return NextResponse.json({ error: "userId required" }, { status: 400 });
+    }
+
+    // Rate limiting: Check daily generation counts
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    
+    const { data: recentGenerations } = await supabase
+      .from("generation_log")
+      .select("posts_generated, created_at")
+      .eq("user_id", userId)
+      .gte("created_at", twentyFourHoursAgo);
+
+    const totalPostsToday = recentGenerations?.reduce((sum, log) => sum + log.posts_generated, 0) ?? 0;
+    const totalRequestsToday = recentGenerations?.length ?? 0;
+
+    if (totalPostsToday >= DAILY_GENERATION_LIMIT) {
+      console.log(`[Generate] Rate limit hit for ${userId}: ${totalPostsToday} posts today`);
+      return NextResponse.json(
+        { error: "Daily generation limit reached. Come back tomorrow!", limit: DAILY_GENERATION_LIMIT },
+        { status: 429 }
+      );
+    }
+
+    if (totalRequestsToday >= DAILY_GENERATION_REQUESTS_LIMIT) {
+      console.log(`[Generate] Request limit hit for ${userId}: ${totalRequestsToday} requests today`);
+      return NextResponse.json(
+        { error: "Too many generation requests today. Come back tomorrow!", limit: DAILY_GENERATION_REQUESTS_LIMIT },
+        { status: 429 }
+      );
     }
 
     // Get user's manifest and soul summaries

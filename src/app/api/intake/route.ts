@@ -355,6 +355,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Dedup check: Prevent re-running intake if manifest already exists
+    const { data: existingManifest } = await supabase
+      .from("soul_manifests")
+      .select("id")
+      .eq("user_id", user.id)
+      .single()
+
+    if (existingManifest) {
+      console.log(`[Intake] Blocked duplicate intake for user ${user.id}`)
+      return NextResponse.json(
+        { error: "Intake already completed. Use profile settings to update your information." },
+        { status: 409 }
+      )
+    }
+
     const { answers } = await request.json()
 
     // ===========================================
