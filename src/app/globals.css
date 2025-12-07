@@ -1,0 +1,262 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand Colors */
+  --yellow-primary: #FCC800;
+  --yellow-light: #FFD633;
+  --yellow-glow: rgba(252, 200, 0, 0.12);
+  
+  /* Pure black base */
+  --background: #000000;
+  --background-elevated: #0A0A0A;
+  --background-card: #111111;
+  
+  /* Text */
+  --foreground: #FFFFFF;
+  --foreground-muted: #A1A1A1;
+  --foreground-subtle: #666666;
+  
+  /* UI */
+  --border: #222222;
+  --border-focus: var(--yellow-primary);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Satoshi-Variable', 'Satoshi', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', 'SF Mono', Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #000;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Satoshi-Variable', 'Satoshi', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar - minimal */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Focus styles - 1px, clean */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 1px solid var(--yellow-primary);
+  outline-offset: 2px;
+}
+
+/* Smooth transitions */
+button, a, input, textarea {
+  transition: all 0.15s ease;
+}
+
+/* Yellow gradient text */
+.text-gradient-yellow {
+  background: linear-gradient(135deg, var(--yellow-primary) 0%, var(--yellow-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtle glow effect */
+.glow-yellow {
+  box-shadow: 0 0 40px var(--yellow-glow);
+}
+
+.glow-yellow-sm {
+  box-shadow: 0 0 20px var(--yellow-glow);
+}
+
+/* Input styles */
+input[type="text"],
+input[type="email"],
+textarea {
+  background: var(--background-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  color: var(--foreground);
+  font-size: 16px;
+  font-family: inherit;
+  width: 100%;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--yellow-primary);
+  box-shadow: 0 0 0 1px var(--yellow-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--foreground-subtle);
+}
+
+/* Primary button - 3D golden pill */
+.btn-primary {
+  background: linear-gradient(180deg, #FFD633 0%, #FCC800 50%, #D4A800 100%);
+  color: #000;
+  font-weight: 600;
+  padding: 16px 32px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-family: inherit;
+  box-shadow: 
+    0 4px 0 #B89700,
+    0 6px 20px rgba(252, 200, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(0);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(180deg, #FFE066 0%, #FFD633 50%, #FCC800 100%);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 5px 0 #B89700,
+    0 8px 25px rgba(252, 200, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(2px);
+  box-shadow: 
+    0 2px 0 #B89700,
+    0 3px 10px rgba(252, 200, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary:focus-visible {
+  outline: 1px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Secondary button */
+.btn-secondary {
+  background: transparent;
+  color: var(--foreground);
+  font-weight: 500;
+  padding: 14px 28px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.btn-secondary:hover {
+  border-color: #444;
+  background: var(--background-elevated);
+}
+
+/* Card styles */
+.card {
+  background: var(--background-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.card:hover {
+  border-color: #333;
+}
+
+/* Verified badge */
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--yellow-primary);
+  border-radius: 50%;
+  margin-left: 4px;
+}
+
+.verified-badge svg {
+  width: 10px;
+  height: 10px;
+  color: #000;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease forwards;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Slow spin for loading */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 0.1s; opacity: 0; }
+.delay-2 { animation-delay: 0.2s; opacity: 0; }
+.delay-3 { animation-delay: 0.3s; opacity: 0; }
+.delay-4 { animation-delay: 0.4s; opacity: 0; }
+.delay-5 { animation-delay: 0.5s; opacity: 0; }
