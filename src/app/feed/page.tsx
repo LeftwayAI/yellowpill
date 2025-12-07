@@ -188,6 +188,20 @@ export default function FeedPage() {
     }
   }, []);
 
+  const handleDelete = useCallback(async (postId: string) => {
+    if (isDevModeEnabled()) {
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      return;
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase.from("posts").delete().eq("id", postId);
+    
+    if (!error) {
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+    }
+  }, []);
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -273,6 +287,7 @@ export default function FeedPage() {
                 onFeedback={handleFeedback}
                 onSeen={markAsSeen}
                 onReply={handleReply}
+                onDelete={handleDelete}
                 formatTimeAgo={formatTimeAgo}
               />
             ))}
@@ -288,6 +303,7 @@ interface PostCardProps {
   onFeedback: (id: string, feedback: "up" | "down") => void;
   onSeen: (id: string) => void;
   onReply: (postId: string, message: string) => Promise<string | null>;
+  onDelete: (id: string) => void;
   formatTimeAgo: (date: string) => string;
 }
 
@@ -430,7 +446,7 @@ function OracleOrb({ posterId, accentColor, onClick }: OracleOrbProps) {
   );
 }
 
-function PostCard({ post, onFeedback, onSeen, onReply, formatTimeAgo }: PostCardProps) {
+function PostCard({ post, onFeedback, onSeen, onReply, onDelete, formatTimeAgo }: PostCardProps) {
   const router = useRouter();
   const [hasSeen, setHasSeen] = useState(post.seen);
   const [showReply, setShowReply] = useState(false);
@@ -438,8 +454,10 @@ function PostCard({ post, onFeedback, onSeen, onReply, formatTimeAgo }: PostCard
   const [isReplying, setIsReplying] = useState(false);
   const [replies, setReplies] = useState<{ role: "user" | "assistant"; content: string }[]>(post.replies || []);
   const [manifestUpdate, setManifestUpdate] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   
   // Get accent color for this poster
   const accentColor = post.poster.accent_color || POSTER_COLORS[post.poster_id] || "#FCC800";
@@ -450,6 +468,19 @@ function PostCard({ post, onFeedback, onSeen, onReply, formatTimeAgo }: PostCard
       replyInputRef.current.focus();
     }
   }, [showReply]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMenu]);
 
   const handleReplySubmit = async () => {
     if (!replyText.trim() || isReplying) return;
@@ -587,6 +618,38 @@ function PostCard({ post, onFeedback, onSeen, onReply, formatTimeAgo }: PostCard
             <span className="text-[var(--foreground-subtle)] text-[15px]">
               · {formatTimeAgo(post.created_at)}
             </span>
+            {/* Spacer to push menu to right */}
+            <div className="flex-1" />
+            {/* More menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+                className="p-1 rounded-full text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] hover:bg-[#222] transition-colors"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="5" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="12" cy="19" r="2" />
+                </svg>
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl overflow-hidden z-50 min-w-[120px]">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      onDelete(post.id);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-[#222] transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Content */}
