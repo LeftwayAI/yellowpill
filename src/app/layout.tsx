@@ -16,7 +16,29 @@ export const metadata: Metadata = {
     description: "AI that actually knows you",
     siteName: "Yellow Pill",
     type: "website",
+    locale: "en_US",
+    url: "https://yellowpill.app",
+    images: [
+      {
+        url: "/images/assets/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Yellow Pill - AI that actually knows you",
+      },
+    ],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Yellow Pill",
+    description: "AI that actually knows you",
+    images: ["/images/assets/og.png"],
+    creator: "@yellowpillapp",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  keywords: ["AI", "personal AI", "feed", "self-improvement", "Yellow Pill"],
 };
 
 export const viewport: Viewport = {

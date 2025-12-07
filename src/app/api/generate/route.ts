@@ -9,6 +9,74 @@ import { needsSpecialHandler, runSpecialPoster } from "@/lib/special-posters";
 // How many posts to generate per request
 const POSTS_TO_GENERATE = 5;
 
+// Similarity threshold - posts with higher overlap will be skipped
+const SIMILARITY_THRESHOLD = 0.35;
+
+// Common words to ignore in similarity check
+const STOPWORDS = new Set([
+  "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+  "have", "has", "had", "do", "does", "did", "will", "would", "could",
+  "should", "may", "might", "must", "shall", "can", "need", "dare",
+  "ought", "used", "to", "of", "in", "for", "on", "with", "at", "by",
+  "from", "as", "into", "through", "during", "before", "after", "above",
+  "below", "between", "under", "again", "further", "then", "once", "here",
+  "there", "when", "where", "why", "how", "all", "each", "few", "more",
+  "most", "other", "some", "such", "no", "nor", "not", "only", "own",
+  "same", "so", "than", "too", "very", "just", "and", "but", "if", "or",
+  "because", "until", "while", "this", "that", "these", "those", "it",
+  "its", "you", "your", "yours", "yourself", "he", "him", "his", "she",
+  "her", "hers", "we", "our", "ours", "they", "them", "their", "what",
+  "which", "who", "whom", "i", "me", "my", "myself", "about", "like",
+  "dont", "youre", "youve", "youll", "thats", "theyre", "weve", "ive",
+]);
+
+// Extract meaningful keywords from text
+function extractKeywords(text: string): Set<string> {
+  const words = text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ") // Remove punctuation
+    .split(/\s+/)
+    .filter((word) => word.length > 3 && !STOPWORDS.has(word));
+  return new Set(words);
+}
+
+// Calculate Jaccard similarity between two keyword sets
+function calculateSimilarity(set1: Set<string>, set2: Set<string>): number {
+  if (set1.size === 0 || set2.size === 0) return 0;
+  
+  const intersection = new Set([...set1].filter((x) => set2.has(x)));
+  const union = new Set([...set1, ...set2]);
+  
+  return intersection.size / union.size;
+}
+
+// Check if new content is too similar to any existing content
+function isTooSimilar(
+  newContent: string,
+  existingContents: string[],
+  threshold: number = SIMILARITY_THRESHOLD
+): { isDuplicate: boolean; maxSimilarity: number; matchedWith?: string } {
+  const newKeywords = extractKeywords(newContent);
+  let maxSimilarity = 0;
+  let matchedWith: string | undefined;
+
+  for (const existing of existingContents) {
+    const existingKeywords = extractKeywords(existing);
+    const similarity = calculateSimilarity(newKeywords, existingKeywords);
+    
+    if (similarity > maxSimilarity) {
+      maxSimilarity = similarity;
+      matchedWith = existing.substring(0, 50) + "...";
+    }
+  }
+
+  return {
+    isDuplicate: maxSimilarity > threshold,
+    maxSimilarity,
+    matchedWith,
+  };
+}
+
 // Select which poster to generate from
 function selectPoster(posters: Poster[], recentPosterIds: string[]): Poster {
   // Weight by: hasn't posted recently + randomness
@@ -86,15 +154,16 @@ export async function POST(request: Request) {
       post_types: p.post_types as unknown as PostType[],
     })) as Poster[];
 
-    // Get recent posts to avoid repetition
+    // Get recent posts to avoid repetition (both poster and content)
     const { data: recentPosts } = await supabase
       .from("posts")
-      .select("poster_id")
+      .select("poster_id, content")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(3);
+      .limit(20); // Fetch more for content dedup
 
-    const recentPosterIds = recentPosts?.map((p) => p.poster_id) || [];
+    const recentPosterIds = recentPosts?.map((p) => p.poster_id).slice(0, 3) || [];
+    const recentContents = recentPosts?.map((p) => p.content) || [];
 
     // Generate posts using the pipeline
     const generatedPosts: Array<{
@@ -135,6 +204,23 @@ export async function POST(request: Request) {
 
       console.log(`[Generate] Post ${i + 1} complete`);
 
+      // Check for similarity against recent posts AND posts we're about to insert
+      const allRecentContents = [
+        ...recentContents,
+        ...generatedPosts.map((p) => p.content),
+      ];
+      
+      const similarityCheck = isTooSimilar(content, allRecentContents);
+      
+      if (similarityCheck.isDuplicate) {
+        console.log(
+          `[Generate] Post ${i + 1} SKIPPED - too similar (${(similarityCheck.maxSimilarity * 100).toFixed(0)}% overlap)`
+        );
+        // Don't add to generated posts, but still track poster to avoid repetition
+        recentPosterIds.unshift(poster.id);
+        continue;
+      }
+
       // Track which fields were used
       const manifestFieldsUsed = postType.manifest_fields;
 
@@ -152,22 +238,27 @@ export async function POST(request: Request) {
     }
 
     const totalDuration = Date.now() - totalStart;
-    console.log(`[Generate] All ${POSTS_TO_GENERATE} posts generated in ${totalDuration}ms (avg: ${Math.round(totalDuration / POSTS_TO_GENERATE)}ms each)`);
+    const skippedCount = POSTS_TO_GENERATE - generatedPosts.length;
+    console.log(
+      `[Generate] ${generatedPosts.length}/${POSTS_TO_GENERATE} posts kept (${skippedCount} skipped as duplicates) in ${totalDuration}ms`
+    );
 
-    // Insert all posts
-    const { error: insertError } = await supabase
-      .from("posts")
-      .insert(generatedPosts);
+    // Insert posts (if any passed the similarity check)
+    if (generatedPosts.length > 0) {
+      const { error: insertError } = await supabase
+        .from("posts")
+        .insert(generatedPosts);
 
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      return NextResponse.json(
-        { error: "Failed to save posts" },
-        { status: 500 }
-      );
+      if (insertError) {
+        console.error("Insert error:", insertError);
+        return NextResponse.json(
+          { error: "Failed to save posts" },
+          { status: 500 }
+        );
+      }
     }
 
-    // Log generation
+    // Log generation (skipped count logged to console only)
     await supabase.from("generation_log").insert({
       user_id: userId,
       posts_generated: generatedPosts.length,
@@ -176,6 +267,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       generated: generatedPosts.length,
+      skipped_duplicates: skippedCount,
       total_duration_ms: totalDuration,
     });
   } catch (error) {
