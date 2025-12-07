@@ -96,7 +96,8 @@ Generate ONLY the post content.`;
 }
 
 // ============================================
-// VISUAL DREAMS - Generates actual images
+// VISUAL DREAMS / FUTURE VISUALIZER - Generates actual images
+// Creates tangential, adjacent scenes - NOT literal interpretations
 // ============================================
 
 export async function generateVisualDream(
@@ -105,30 +106,71 @@ export async function generateVisualDream(
   soulSummary: string
 ): Promise<{ content: string; imageUrl: string | null }> {
   
-  // Step 1: Generate caption and image prompt together
-  const promptGeneration = await grokChat(
-    `You are creating a visual dream post. You need to generate TWO things:
-1. A short, evocative caption (2-3 sentences, cinematic, present tense)
-2. An image generation prompt (detailed, photorealistic, specific)
+  // Step 1: Generate a TANGENTIAL scene concept first
+  const sceneConceptPrompt = await grokChat(
+    `You are an imaginative director who creates visual daydreams for someone's future.
 
-The image should visualize a specific dream or future scene from the person's aspirations.`,
+=== THE MOST IMPORTANT RULE ===
+
+DO NOT visualize what they explicitly said they wanted.
+
+If they said "write a book" → DO NOT show books, writing, desks, publishing
+If they said "financial freedom" → DO NOT show money, luxury, retirement
+If they said "start a company" → DO NOT show offices, meetings, products
+
+Instead, imagine what would make THIS SPECIFIC PERSON happy based on WHO THEY ARE:
+
+1. SENSORY PLEASURES they'd love: A specific quality of light. A sound. A temperature. A texture.
+
+2. QUIET EVIDENCE OF ARRIVAL: What mundane moments would only exist if everything went well? 
+   - A specific type of nap they'd finally take without guilt
+   - A phone call from a parent asking THEM for advice
+   - An airport departure board showing somewhere unexpected
+   - A pet curled up next to them on a couch they love
+
+3. UNEXPECTED JOYS: Based on their personality, what might they discover they love?
+   - The collector who has a garden now
+   - The type-A achiever who's really into pottery
+   - The introvert hosting a dinner party they actually enjoy
+
+The image should make them think "I didn't know I wanted that" not "That's exactly what I told you."`,
     [{ 
       role: "user", 
       content: `Soul context:
 ${soulSummary}
 
-Post type: ${postType.type}
-Description: ${postType.description}
+Based on who this person IS (not just what they said they want), imagine a visual scene that would bring them unexpected joy.
 
-Generate:
-1. CAPTION: [2-3 sentences, cinematic, no names, under ${postType.max_length} chars]
-2. IMAGE_PROMPT: [Detailed prompt for photorealistic image generation, include: setting, lighting, atmosphere, composition, style notes]
+Think about:
+- What sensory experience would make their specific personality type light up?
+- What quiet moment of arrival would only exist if their deeper values were being lived?
+- What hobby/pleasure/scene would surprise them but feel perfectly "them"?
+
+Describe the scene concept in 2-3 sentences. Be VERY SPECIFIC about visual details.`
+    }],
+    { model: GROK_MODELS.GROK_4_FAST_REASONING, temperature: 0.9, max_tokens: 300 }
+  );
+
+  // Step 2: Turn concept into caption and image prompt
+  const promptGeneration = await grokChat(
+    `You are creating a visual dream post based on this scene concept:
+
+${sceneConceptPrompt}
+
+You need to generate TWO things:
+1. A short, evocative caption (2-3 sentences, cinematic, present tense, second person "you")
+2. An image generation prompt (detailed, photorealistic, NO PEOPLE OR FACES, focus on environment/objects)`,
+    [{ 
+      role: "user", 
+      content: `Generate:
+1. CAPTION: [2-3 sentences, cinematic, under ${postType.max_length} chars, no names, present tense]
+2. IMAGE_PROMPT: [Detailed prompt for photorealistic image. CRITICAL: Do NOT include any people, faces, or human figures. Focus on: setting, objects, lighting, atmosphere, time of day, textures, colors. Style: cinematic photography, shallow depth of field, natural lighting]
 
 Format exactly as:
 CAPTION: [your caption]
 IMAGE_PROMPT: [your image prompt]`
     }],
-    { model: GROK_MODELS.GROK_4_FAST_REASONING, temperature: 0.7, max_tokens: 600 }
+    { model: GROK_MODELS.GROK_3, temperature: 0.7, max_tokens: 600 }
   );
 
   // Parse the response
@@ -138,7 +180,10 @@ IMAGE_PROMPT: [your image prompt]`
   const caption = captionMatch?.[1]?.trim() || promptGeneration.split("\n")[0];
   const imagePrompt = imagePromptMatch?.[1]?.trim() || "";
 
-  // Step 2: Generate the image
+  console.log("[Visual Dreams] Scene concept:", sceneConceptPrompt);
+  console.log("[Visual Dreams] Image prompt:", imagePrompt);
+
+  // Step 3: Generate the image
   let imageUrl: string | null = null;
   
   if (imagePrompt) {
@@ -149,6 +194,7 @@ IMAGE_PROMPT: [your image prompt]`
       });
       
       imageUrl = imageResponse.data[0]?.url || null;
+      console.log("[Visual Dreams] Image generated:", imageUrl ? "success" : "no url");
     } catch (error) {
       console.error("[Visual Dreams] Image generation failed:", error);
       // Continue with just the caption

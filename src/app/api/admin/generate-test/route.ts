@@ -39,11 +39,16 @@ function generateSeedConstraint(posterId: string): { constraint: string; seed: s
 
 CRITICAL: You MUST use a real, verified quote. Do NOT make up quotes. Do NOT modify quotes. If you're not 100% certain the quote is real and correctly attributed, pick a different one you ARE certain about.
 
-The quote should feel unexpected — not the obvious choice.`,
+The quote should feel unexpected — not the obvious choice.
+
+FORMAT: Output ONLY the quote and attribution. NO preamble, NO intro like "On finding meaning:" or "About creativity:" — JUST the quote itself, then the author.
+Example format:
+"The quote text goes here exactly as written."
+— Author Name`,
     };
   }
   
-  // Scenes From Your Future: Random time/season/year
+  // Scenes From Your Future: Random time/season/year - TANGENTIAL scenes
   if (posterId === "scenes-future") {
     const season = SEASONS[Math.floor(Math.random() * SEASONS.length)];
     const time = TIMES_OF_DAY[Math.floor(Math.random() * TIMES_OF_DAY.length)];
@@ -51,7 +56,20 @@ The quote should feel unexpected — not the obvious choice.`,
     
     return {
       seed: `${season}, ${time}, ${yearsAhead}y`,
-      constraint: `CONSTRAINT: The scene MUST take place in ${season}, during ${time}, approximately ${yearsAhead} year${yearsAhead > 1 ? "s" : ""} from now. Start with a time anchor like "It's ${season}, ${new Date().getFullYear() + yearsAhead}. ${time.charAt(0).toUpperCase() + time.slice(1)}..."`,
+      constraint: `CONSTRAINT: The scene MUST take place in ${season}, during ${time}, approximately ${yearsAhead} year${yearsAhead > 1 ? "s" : ""} from now.
+
+CRITICAL DIRECTION: Do NOT visualize the exact things they said they wanted. Instead, imagine TANGENTIAL scenes — things ADJACENT to their dreams that would make them just as happy.
+
+Think about:
+- What byproducts of success look like (not the award ceremony, but the random Tuesday after)
+- What their life AROUND their goals might look like (not the book launch, but the morning routine of a person who writes)
+- Unexpected moments that signal they've arrived (not closing the deal, but teaching someone else how)
+- The small human moments that accompany big achievements
+
+If they want to be a writer: don't show them at a signing — show them skipping a party because they're in flow.
+If they want financial freedom: don't show wealth — show the 2pm Tuesday where they chose a long walk over a meeting.
+
+Start with a time anchor like "It's ${season}, ${new Date().getFullYear() + yearsAhead}. ${time.charAt(0).toUpperCase() + time.slice(1)}..."`,
     };
   }
   

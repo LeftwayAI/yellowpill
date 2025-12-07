@@ -6,6 +6,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { isDevModeEnabled } from "@/lib/dev-auth";
 import { ListBuilder } from "@/components/ListBuilder";
+import { SpinningPill } from "@/components/SpinningPill";
 // Voice input available but hidden for now
 // import { MicButton, VoiceInputDivider } from "@/components/MicButton";
 
@@ -227,6 +228,9 @@ export default function IntakePage() {
   const [loadingMessage, setLoadingMessage] = useState(LOADING_MESSAGES[0]);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Background post generation
+  const [preGenerationStarted, setPreGenerationStarted] = useState(false);
 
   const currentQuestion = questions[currentStep];
   const progress = ((currentStep + 1) / questions.length) * 100;
@@ -486,6 +490,30 @@ export default function IntakePage() {
       if (flowType === "standard") {
         saveProgress(answers, nextStep);
       }
+
+      // Trigger early post pre-generation after 3rd question to have feed ready
+      // This kicks off a preliminary generation job in the background
+      if (nextStep >= 3 && !preGenerationStarted && !isDevModeEnabled()) {
+        setPreGenerationStarted(true);
+        triggerPreGeneration(answers);
+      }
+    }
+  };
+
+  // Pre-generate posts in the background with partial data
+  const triggerPreGeneration = async (partialAnswers: Record<string, AnswerValue>) => {
+    try {
+      // We don't await this - it runs in the background
+      fetch("/api/intake/pre-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partialAnswers }),
+      }).catch(err => {
+        // Silently fail - this is just a warm-up optimization
+        console.log("Pre-generation warm-up:", err.message);
+      });
+    } catch {
+      // Silently fail
     }
   };
 
@@ -645,7 +673,7 @@ export default function IntakePage() {
   if (checkingAuth || flowType === "loading") {
     return (
       <main className="min-h-screen flex items-center justify-center bg-black">
-        <div className="w-8 h-8 border-2 border-[#FCC800] border-t-transparent rounded-full animate-spin" />
+        <SpinningPill />
       </main>
     );
   }

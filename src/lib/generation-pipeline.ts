@@ -70,7 +70,22 @@ function generateSeed(posterId: string, postType: string): GenerationSeed | null
 
 CRITICAL: You MUST use a real, verified quote. Do NOT make up quotes. Do NOT modify quotes. If you're not 100% certain the quote is real and correctly attributed, pick a different one you ARE certain about.
 
-The quote should feel unexpected — not the obvious choice.`,
+The quote should feel unexpected — not the obvious choice.
+
+FORMAT REQUIREMENTS - THIS IS EXTREMELY IMPORTANT:
+- Start DIRECTLY with the opening quotation mark
+- NO preamble whatsoever
+- NO intro phrases like "On finding meaning:" or "About creativity:" or "Here's a quote about..."
+- NO context-setting before the quote
+- ONLY output: "The exact quote." — Author Name
+- Nothing else. Just the quote and the author. That's it.
+
+WRONG FORMAT:
+On perseverance: "The quote..."
+
+CORRECT FORMAT:
+"The quote..."
+— Author Name`,
     };
   }
   
@@ -83,7 +98,34 @@ The quote should feel unexpected — not the obvious choice.`,
     return {
       type: "time",
       value: `${season}, ${time}, ${yearsAhead}y`,
-      constraint: `CONSTRAINT: The scene MUST take place in ${season}, during ${time}, approximately ${yearsAhead} year${yearsAhead > 1 ? "s" : ""} from now. Start with a time anchor like "It's ${season}, ${new Date().getFullYear() + yearsAhead}. ${time.charAt(0).toUpperCase() + time.slice(1)}..."`,
+      constraint: `CONSTRAINT: The scene MUST take place in ${season}, during ${time}, approximately ${yearsAhead} year${yearsAhead > 1 ? "s" : ""} from now.
+
+=== THIS IS THE MOST IMPORTANT INSTRUCTION ===
+
+DO NOT WRITE ABOUT WHAT THEY SAID THEY WANT. 
+
+If they said they want to write a book → DO NOT mention books, writing, publishing, or authors
+If they said they want financial freedom → DO NOT mention money, retirement, or "not having to work"
+If they said they want to build a startup → DO NOT mention companies, investors, or exits
+
+Instead, DAYDREAM about things that would make this specific person HAPPY based on who they are:
+
+1. ADJACENT PLEASURES: What sensory experiences would they love? A specific type of morning? A view? A sound? A feeling?
+
+2. CHARACTER-BASED MOMENTS: Based on their personality, what random scene would bring them deep satisfaction? If they're a tinkerer, maybe they're fixing something odd at a neighbor's house. If they're a connector, maybe a dinner table scene with unexpected guests.
+
+3. QUIET SIGNALS OF ARRIVAL: What tiny mundane moment would only exist if everything went extraordinarily well? The specific coffee order they'd have time to make. The dog walk they'd never have to cut short. The nap they'd take without guilt.
+
+4. EXPANDED POSSIBILITIES: Based on who they are, what life experiences might they stumble into that they never even thought to want? Travel to unexpected places? Hobbies they'd discover? People they'd meet?
+
+The goal is to paint a scene that makes them think "Oh... I didn't know I wanted that, but yes." NOT "That's exactly what I told you I wanted."
+
+EXAMPLES:
+- User wants to be a writer → Scene: Teaching your nephew to skip rocks at a lakehouse you rented for the summer. The manuscript is done but you're not thinking about it.
+- User wants financial freedom → Scene: A random Wednesday, 2pm, you're at a bookstore in a town you've never been to, no phone, nowhere to be.
+- User wants to build something → Scene: A FaceTime call with your parents where they're asking for advice on THEIR side project. The roles have reversed.
+
+Start with: "It's ${season}, ${new Date().getFullYear() + yearsAhead}. ${time.charAt(0).toUpperCase() + time.slice(1)}..."`,
     };
   }
   
