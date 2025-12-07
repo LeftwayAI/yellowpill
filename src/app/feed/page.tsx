@@ -307,32 +307,6 @@ interface PostCardProps {
   formatTimeAgo: (date: string) => string;
 }
 
-// Generate deterministic floating orb positions based on post ID
-function generateOrbPositions(postId: string) {
-  const seed = postId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const orbs = [];
-  const orbCount = 4 + (seed % 3); // 4-6 orbs
-  
-  for (let i = 0; i < orbCount; i++) {
-    const hash = (seed * (i + 1) * 31) % 1000;
-    const hash2 = (seed * (i + 1) * 47) % 1000;
-    const hash3 = (seed * (i + 1) * 73) % 1000;
-    orbs.push({
-      size: 180 + (hash % 250), // 180-430px - big floating circles
-      startX: -30 + (hash % 140), // -30% to 110% - can start off-screen
-      startY: -50 + (hash2 % 150), // -50% to 100% - can be above/below
-      // Random movement offsets for each orb - more dramatic
-      moveX1: -40 + (hash3 % 80),
-      moveY1: -40 + ((hash3 * 3) % 80),
-      moveX2: -40 + ((hash * 5) % 80),
-      moveY2: -40 + ((hash2 * 7) % 80),
-      delay: (i * 2), // stagger animation
-      duration: 25 + (hash % 20), // 25-45s - slow organic movement
-    });
-  }
-  return orbs;
-}
-
 // Oracle Orb Avatar - each has unique random movement
 interface OracleOrbProps {
   posterId: string;
@@ -520,9 +494,6 @@ function PostCard({ post, onFeedback, onSeen, onReply, onDelete, formatTimeAgo }
     }
   };
   
-  // Generate orb positions - big floating circles
-  const orbs = generateOrbPositions(post.id);
-
   useEffect(() => {
     if (!hasSeen) {
       const timer = setTimeout(() => {
@@ -547,48 +518,11 @@ function PostCard({ post, onFeedback, onSeen, onReply, onDelete, formatTimeAgo }
   return (
     <div
       ref={cardRef}
-      className="relative cursor-pointer overflow-hidden group border-b border-[#222]"
+      className="relative cursor-pointer group border-b border-[#222]"
       onClick={handleCardClick}
     >
-      {/* Large floating orbs - clipped by overflow-hidden on parent */}
-      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-        {orbs.map((orb, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width: orb.size,
-              height: orb.size,
-              left: `${orb.startX}%`,
-              top: `${orb.startY}%`,
-              background: `radial-gradient(circle at 35% 35%, ${accentColor}ff 0%, ${accentColor}dd 20%, ${accentColor}99 40%, ${accentColor}44 60%, transparent 75%)`,
-              filter: 'blur(2px)',
-              opacity: 0.85,
-              animation: `orb-float-${post.id}-${i} ${orb.duration}s ease-in-out infinite`,
-              animationDelay: `${orb.delay}s`,
-            }}
-          />
-        ))}
-        {/* Inject dynamic keyframes for each orb's unique movement */}
-        <style>{`
-          ${orbs.map((orb, i) => `
-            @keyframes orb-float-${post.id}-${i} {
-              0%, 100% { transform: translate(0, 0) scale(1); }
-              16% { transform: translate(${orb.moveX1}%, ${orb.moveY1 * 0.6}%) scale(1.12); }
-              33% { transform: translate(${orb.moveX2 * 0.7}%, ${orb.moveY2}%) scale(0.92); }
-              50% { transform: translate(${orb.moveX2}%, ${orb.moveY1}%) scale(1.08); }
-              66% { transform: translate(${orb.moveY1 * 0.8}%, ${orb.moveX2 * 0.5}%) scale(0.96); }
-              83% { transform: translate(${orb.moveX1 * 0.5}%, ${orb.moveY2 * 0.7}%) scale(1.04); }
-            }
-          `).join('')}
-        `}</style>
-      </div>
-      
-      {/* Dark frosted glass overlay - more opaque, more blur */}
-      <div className="absolute inset-0 bg-black/[0.92] backdrop-blur-xl pointer-events-none" style={{ zIndex: 1 }} />
-      
       {/* Content - X-style gutter layout */}
-      <div className="relative z-10 flex gap-3 px-4 py-3">
+      <div className="relative flex gap-3 px-4 py-3">
         {/* Gutter - Oracle orb avatar */}
         <OracleOrb 
           posterId={post.poster_id}
